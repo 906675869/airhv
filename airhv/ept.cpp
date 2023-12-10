@@ -27,7 +27,7 @@ namespace ept
 
 		//
 		// The memory type range registers (MTRRs) provide a mechanism for associating the memory types (see Section
-		// 11.3, “Methods of Caching Available”) with physical - address ranges in system memory.They allow the processor to
+		// 11.3, “Methods of Caching Available? with physical - address ranges in system memory.They allow the processor to
 		// optimize operations for different types of memory such as RAM, ROM, frame - buffer memory, and memory - mapped
 		// I/O devices.They also simplify system hardware design by eliminating the memory control pins used for this func -
 		// tion on earlier IA - 32 processors and the external logic needed to drive them.
@@ -119,8 +119,8 @@ namespace ept
 		{
 			//
 			// The first entry in each pair (IA32_MTRR_PHYSBASEn) defines the base address and memory type for the range;
-			// the second entry(IA32_MTRR_PHYSMASKn) contains a mask used to determine the address range.The “n” suffix
-			// is in the range 0 through m–1 and identifies a specific register pair.
+			// the second entry(IA32_MTRR_PHYSMASKn) contains a mask used to determine the address range.The “n?suffix
+			// is in the range 0 through m? and identifies a specific register pair.
 			//
 			current_phys_base.all = __readmsr(IA32_MTRR_PHYSBASE0 + (i * 2));
 			current_phys_mask.all = __readmsr(IA32_MTRR_PHYSMASK0 + (i * 2));
