@@ -6,10 +6,14 @@
 #include "hypervisor_routines.h"
 #include "hypervisor_gateway.h"
 #include "vmm.h"
+#include "hookfunction.h"
 
 #define IOCTL_POOL_MANAGER_ALLOCATE CTL_CODE(FILE_DEVICE_UNKNOWN, 0x900, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+#define IOCTL_TEST CTL_CODE(FILE_DEVICE_UNKNOWN, 0x901, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
 
 __vmm_context* g_vmm_context = 0;
+
+PDRIVER_OBJECT gdriver_object;
 
  VOID driver_unload(PDRIVER_OBJECT driver_object)
  {
@@ -43,6 +47,27 @@ __vmm_context* g_vmm_context = 0;
 	 return STATUS_SUCCESS;
  }
 
+ NTSTATUS Test() {
+	 LogInfo("TEST");
+	 HookAllNtFunction();
+	 auto start = ExAllocatePool(NonPagedPool, 1024);
+	 if (start) {
+		 RtlZeroMemory(start, 1024);
+		 *(char*)start = 3;
+		 auto base = gdriver_object->DriverStart;
+		 LogInfo("Current Driver base is %xll", base);
+
+		 // RtlCopyMemory(start, base, 20);
+		 return STATUS_SUCCESS;
+	 
+	 }
+	 return STATUS_SUCCESS;
+	 
+	 
+	
+ }
+
+
  NTSTATUS driver_ioctl_dispatcher(_In_ PDEVICE_OBJECT device_object, _In_ PIRP irp)
  {
 	 UNREFERENCED_PARAMETER(device_object);
@@ -58,6 +83,11 @@ __vmm_context* g_vmm_context = 0;
 		 case IOCTL_POOL_MANAGER_ALLOCATE:
 		 {
 			 status = pool_manager::perform_allocation();
+			 break;
+		 }
+		 case IOCTL_TEST:
+		 {
+			 status = Test();
 			 break;
 		 }
 	 }
@@ -80,7 +110,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PCUNICODE_STRING reg)
 
 	RtlInitUnicodeString(&driver_name, L"\\Device\\airhv");
 	RtlInitUnicodeString(&dos_device_name, L"\\DosDevices\\airhv");
-
+	gdriver_object = driver_object;
 	status = IoCreateDevice(driver_object, 0, &driver_name, FILE_DEVICE_UNKNOWN, FILE_DEVICE_SECURE_OPEN, FALSE, &device_object);
 
 	if (status == STATUS_SUCCESS)
