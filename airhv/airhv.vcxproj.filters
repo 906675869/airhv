@@ -1,14 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>
     <Filter Include="Resource Files">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
@@ -17,146 +9,217 @@
       <UniqueIdentifier>{8E41214B-6785-4CFE-B992-037D68949A14}</UniqueIdentifier>
       <Extensions>inf;inv;inx;mof;mc;</Extensions>
     </Filter>
-    <Filter Include="asm">
-      <UniqueIdentifier>{73422af8-864e-442f-a192-be64adb0a0fc}</UniqueIdentifier>
+    <Filter Include="hv">
+      <UniqueIdentifier>{558f539d-aa56-4f9d-8979-001c537f1c6f}</UniqueIdentifier>
     </Filter>
-    <Filter Include="lde">
+    <Filter Include="hv\Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="hv\lde">
       <UniqueIdentifier>{136f69bf-5e7e-4a02-ab6a-1aef8e5a1207}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ia32">
+    <Filter Include="hv\ia32">
       <UniqueIdentifier>{797b5b3d-b662-46aa-91a2-ba6aa5ce53d3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="hv\Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="hv\asm">
+      <UniqueIdentifier>{73422af8-864e-442f-a192-be64adb0a0fc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="gt">
+      <UniqueIdentifier>{968b6d3e-e440-45e2-bb0a-3d786be6d1a3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="native">
+      <UniqueIdentifier>{2e90a6d8-763e-408b-913b-e46645f5c410}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="gt\bypass">
+      <UniqueIdentifier>{e1444e2b-8c4b-49a9-b19a-cc9c6c15940d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="gt\header">
+      <UniqueIdentifier>{a80b7eb0-4974-4022-ba88-cf8d46ab5aa3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="gt\source">
+      <UniqueIdentifier>{59d46ac5-fab6-46cb-be8a-42fc2b6bef7b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="gt\cm">
+      <UniqueIdentifier>{301cb0e2-6334-4559-b74f-3385a2635224}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="ept.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>hv\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="vmcs.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>hv\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="poolmanager.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>hv\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="spinlock.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>hv\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="log.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>hv\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="hypervisor_routines.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>hv\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="vmcall_handler.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>hv\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="vmexit_handler.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>hv\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="hypervisor_gateway.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>hv\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="invalidators.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>hv\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="vmm.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>hv\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>gt</Filter>
+    </ClCompile>
+    <ClCompile Include="cm.cpp">
+      <Filter>gt\cm</Filter>
+    </ClCompile>
+    <ClCompile Include="gmm.cpp">
+      <Filter>gt\source</Filter>
+    </ClCompile>
+    <ClCompile Include="kmclass.cpp">
+      <Filter>gt\source</Filter>
+    </ClCompile>
+    <ClCompile Include="utils.cpp">
+      <Filter>gt\source</Filter>
+    </ClCompile>
+    <ClCompile Include="bypass.cpp">
+      <Filter>gt\bypass</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="poolmanager.h">
-      <Filter>Header Files</Filter>
+      <Filter>hv\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ntapi.h">
-      <Filter>Header Files</Filter>
+      <Filter>hv\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="hypervisor_routines.h">
-      <Filter>Header Files</Filter>
+      <Filter>hv\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="hypervisor_gateway.h">
-      <Filter>Header Files</Filter>
+      <Filter>hv\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ia32\cpuid.h">
-      <Filter>ia32</Filter>
+      <Filter>hv\ia32</Filter>
     </ClInclude>
     <ClInclude Include="ia32\cr.h">
-      <Filter>ia32</Filter>
+      <Filter>hv\ia32</Filter>
     </ClInclude>
     <ClInclude Include="ia32\dr.h">
-      <Filter>ia32</Filter>
+      <Filter>hv\ia32</Filter>
     </ClInclude>
     <ClInclude Include="ia32\ept.h">
-      <Filter>ia32</Filter>
+      <Filter>hv\ia32</Filter>
     </ClInclude>
     <ClInclude Include="ia32\msr.h">
-      <Filter>ia32</Filter>
+      <Filter>hv\ia32</Filter>
     </ClInclude>
     <ClInclude Include="ia32\mtrr.h">
-      <Filter>ia32</Filter>
+      <Filter>hv\ia32</Filter>
     </ClInclude>
     <ClInclude Include="ia32\rflags.h">
-      <Filter>ia32</Filter>
+      <Filter>hv\ia32</Filter>
     </ClInclude>
     <ClInclude Include="ia32\vmcs.h">
-      <Filter>ia32</Filter>
+      <Filter>hv\ia32</Filter>
     </ClInclude>
     <ClInclude Include="ia32\vmcs_encodings.h">
-      <Filter>ia32</Filter>
+      <Filter>hv\ia32</Filter>
     </ClInclude>
     <ClInclude Include="common.h">
-      <Filter>Header Files</Filter>
+      <Filter>hv\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="log.h">
-      <Filter>Header Files</Filter>
+      <Filter>hv\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ia32\segment.h">
-      <Filter>ia32</Filter>
+      <Filter>hv\ia32</Filter>
     </ClInclude>
     <ClInclude Include="asm\vm_context.h">
-      <Filter>asm</Filter>
+      <Filter>hv\asm</Filter>
     </ClInclude>
     <ClInclude Include="asm\vm_intrin.h">
-      <Filter>asm</Filter>
+      <Filter>hv\asm</Filter>
     </ClInclude>
     <ClInclude Include="vmcall_handler.h">
-      <Filter>Header Files</Filter>
+      <Filter>hv\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="vmcall_reason.h">
-      <Filter>Header Files</Filter>
+      <Filter>hv\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="vmexit_handler.h">
-      <Filter>Header Files</Filter>
+      <Filter>hv\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="interrupt.h">
-      <Filter>Header Files</Filter>
+      <Filter>hv\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="allocators.h">
-      <Filter>Header Files</Filter>
+      <Filter>hv\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="invalidators.h">
-      <Filter>Header Files</Filter>
+      <Filter>hv\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="vmm.h">
-      <Filter>Header Files</Filter>
+      <Filter>hv\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="xsave.h">
-      <Filter>Header Files</Filter>
+      <Filter>hv\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="spinlock.h">
-      <Filter>Header Files</Filter>
+      <Filter>hv\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Ntenums.h">
+      <Filter>native</Filter>
+    </ClInclude>
+    <ClInclude Include="NtStruct.h">
+      <Filter>native</Filter>
+    </ClInclude>
+    <ClInclude Include="cm.h">
+      <Filter>gt\cm</Filter>
+    </ClInclude>
+    <ClInclude Include="gmm.h">
+      <Filter>gt\header</Filter>
+    </ClInclude>
+    <ClInclude Include="kmclass.h">
+      <Filter>gt\header</Filter>
+    </ClInclude>
+    <ClInclude Include="kmclass_common.h">
+      <Filter>gt\header</Filter>
+    </ClInclude>
+    <ClInclude Include="tools.h">
+      <Filter>gt\header</Filter>
+    </ClInclude>
+    <ClInclude Include="utils.h">
+      <Filter>gt\header</Filter>
+    </ClInclude>
+    <ClInclude Include="bypass.h">
+      <Filter>gt\bypass</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="lde\lde64.asm">
-      <Filter>lde</Filter>
+      <Filter>hv\lde</Filter>
     </MASM>
     <MASM Include="asm\vm_context.asm">
-      <Filter>asm</Filter>
+      <Filter>hv\asm</Filter>
     </MASM>
     <MASM Include="asm\vm_intrin.asm">
-      <Filter>asm</Filter>
+      <Filter>hv\asm</Filter>
     </MASM>
   </ItemGroup>
 </Project>
