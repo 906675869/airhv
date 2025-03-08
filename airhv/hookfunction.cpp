@@ -6,6 +6,15 @@
 
 HookGlobalData hgData;
 
+OriginalMmCopyVirtualMemoryType OriginalMmCopyVirtualMemory;
+OriginalNtCreateFileType OriginalNtCreateFile;
+OriginalNtOpenProcessType OriginalNtOpenProcess;
+OriginalMmIsAddressValidType OriginalMmIsAddressValid;
+OriginalMemmoveType OriginalMemmove;
+OriginalProbeForReadType OriginalProbeForRead;
+OriginalNtDeviceIoControlFileType OriginalNtDeviceIoControlFile;
+
+
 NTSTATUS NTAPI HookedNtCreateFile(
 	PHANDLE            FileHandle,
 	ACCESS_MASK        DesiredAccess,
@@ -26,20 +35,9 @@ NTSTATUS HookedNtOpenProcess(OUT PHANDLE ProcessHandle,
 	IN PCLIENT_ID ClientId);
 
 
-VOID HookedKeStackAttachProcess(
-	_Inout_ PRKPROCESS PROCESS,
-	_Out_ PRKAPC_STATE ApcState
-);
-
 void HookedMemmove(_Out_writes_bytes_all_opt_(_Size) void* _Dst, _In_reads_bytes_opt_(_Size) const void* _Src, _In_ size_t _Size);
-// void* NtCreateFileAddress;
 
 NTSTATUS HookedMmCopyVirtualMemory(PEPROCESS SourceProcess, PVOID SourceAddress, PEPROCESS TargetProcess, PVOID TargetAddress, SIZE_T BufferSize, KPROCESSOR_MODE PreviousMode, PSIZE_T ReturnSize);
-VOID
-(*OriginalKeStackAttachProcess)(
-	_Inout_ PRKPROCESS PROCESS,
-	_Out_ PRKAPC_STATE ApcState
-	);
 
 VOID HookedProbeForRead(
 	volatile VOID* Address,
@@ -47,33 +45,20 @@ VOID HookedProbeForRead(
 	_In_ ULONG Alignment
 );
 
-NTSTATUS(*OriginalMmCopyVirtualMemory)(PEPROCESS SourceProcess, PVOID SourceAddress, PEPROCESS TargetProcess, PVOID TargetAddress, SIZE_T BufferSize, KPROCESSOR_MODE PreviousMode, PSIZE_T ReturnSize);
 
-NTSTATUS(*OriginalNtCreateFile)(PHANDLE FileHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes,
-	PIO_STATUS_BLOCK IoStatusBlock, PLARGE_INTEGER AllocationSize, ULONG FileAttributes,
-	ULONG ShareAccess, ULONG CreateDisposition, ULONG CreateOptions, PVOID EaBuffer, ULONG EaLength
-	);
-
-NTSTATUS(*OriginalNtOpenProcess)(
-	_Out_ PHANDLE ProcessHandle,
-	_In_ ACCESS_MASK DesiredAccess,
-	_In_ POBJECT_ATTRIBUTES ObjectAttributes,
-	_In_opt_ PCLIENT_ID ClientId
-	);
-
-BOOLEAN(*OriginalMmIsAddressValid)(
-	_In_ PVOID VirtualAddress
-	);
-
-void (*OriginalMemmove)(void* _Dst,  const void* _Src, size_t _Size);
-
-
-VOID (*OriginalProbeForRead)(
-	 volatile VOID* Address,
-	_In_ SIZE_T Length,
-	_In_ ULONG Alignment
+NTSTATUS
+HookedNtDeviceIoControlFile(
+	_In_ HANDLE FileHandle,
+	_In_opt_ HANDLE Event,
+	_In_opt_ PIO_APC_ROUTINE ApcRoutine,
+	_In_opt_ PVOID ApcContext,
+	_Out_ PIO_STATUS_BLOCK IoStatusBlock,
+	_In_ ULONG IoControlCode,
+	PVOID InputBuffer,
+	_In_ ULONG InputBufferLength,
+	PVOID OutputBuffer,
+	_In_ ULONG OutputBufferLength
 );
-
 
 
 HookStruct hsarr[] = {
@@ -82,7 +67,7 @@ HookStruct hsarr[] = {
 	{ L"MmIsAddressValid", HookedMmIsAddressValid, (void**)&OriginalMmIsAddressValid },
 	{ L"MmCopyVirtualMemory", HookedMmCopyVirtualMemory, (void**)&OriginalMmCopyVirtualMemory },
 	{ L"ProbeForRead", HookedProbeForRead, (void**)&OriginalProbeForRead },
-	// { L"KeStackAttachProcess", HookedKeStackAttachProcess, (void**)&OriginalKeStackAttachProcess },
+	// { L"NtDeviceIoControlFile", HookedNtDeviceIoControlFile, (void**)&OriginalNtDeviceIoControlFile },
 	// { L"RtlCopyMemory", HookedMemmove, (void**)&OriginalMemmove }
 
 
@@ -93,24 +78,44 @@ void HookedMemmove(_Out_writes_bytes_all_opt_(_Size) void* _Dst, _In_reads_bytes
 	OriginalMemmove(_Dst, _Src, _Size);
 }
 
-
-VOID HookedKeStackAttachProcess(
-	_Inout_ PRKPROCESS PROCESS,
-	_Out_ PRKAPC_STATE ApcState
+NTSTATUS
+HookedNtDeviceIoControlFile(
+	_In_ HANDLE FileHandle,
+	_In_opt_ HANDLE Event,
+	_In_opt_ PIO_APC_ROUTINE ApcRoutine,
+	_In_opt_ PVOID ApcContext,
+	_Out_ PIO_STATUS_BLOCK IoStatusBlock,
+	_In_ ULONG IoControlCode,
+	PVOID InputBuffer,
+	_In_ ULONG InputBufferLength,
+	PVOID OutputBuffer,
+	_In_ ULONG OutputBufferLength
 ) {
-	// 目标进程是保护的进程，伪装
-	if (hgData.pid != 0 && hgData.pid != 4 && (int)PsGetProcessId(PROCESS) == hgData.pid) {
-		PEPROCESS eproc = NULL;
-		PsLookupProcessByProcessId((HANDLE)4, &eproc);
-		OriginalKeStackAttachProcess(eproc, ApcState);
-		return;
-	}
-	OriginalKeStackAttachProcess(PROCESS, ApcState);
+	/*NTSTATUS status;
+	POBJECT_NAME_INFORMATION pNameInfo;
+	ULONG returnLength;
+	status = ObQueryNameString(FileHandle, NULL, 0, &returnLength);
+	if (status == STATUS_INFO_LENGTH_MISMATCH) {
+		pNameInfo = (POBJECT_NAME_INFORMATION)ExAllocatePoolWithTag(PagedPool, returnLength, 'Tag');
+		if (pNameInfo) {
+			status = ObQueryNameString(FileHandle, pNameInfo, returnLength, &returnLength);
+			if (NT_SUCCESS(status)) {
+				LogInfo("Object Name: %wZ\n", &pNameInfo->Name);
+			}
+			ExFreePool(pNameInfo);
+		}
+	}*/
+	LogInfo("IoControlCode is: %d", IoControlCode);
 
-	//MmCopyVirtualMemory(0, 0, );
-	// NtReadVirtualMemory(0,0,0,0);
-	
+
+	return OriginalNtDeviceIoControlFile(FileHandle, Event, ApcRoutine, ApcContext, IoStatusBlock, IoControlCode ,InputBuffer, InputBufferLength, OutputBuffer, OutputBufferLength);
+
+
+
 }
+
+
+
 
 
 void HookAllNtFunction() {
@@ -143,13 +148,12 @@ NTSTATUS HookedMmCopyVirtualMemory(PEPROCESS SourceProcess, PVOID SourceAddress,
 	if (hgData.pid == 0) {
 		return OriginalMmCopyVirtualMemory(SourceProcess, SourceAddress, TargetProcess, TargetAddress, BufferSize, PreviousMode, ReturnSize);
 	}
-	auto pid = PsGetProcessId(SourceProcess);
-	auto targetPid = PsGetProcessId(TargetProcess);
-	if ((int)pid == hgData.pid) {
+	ULONG pid = (ULONG)PsGetProcessId(SourceProcess);
+	if (pid == hgData.pid) {
 		return STATUS_SUCCESS;
 	}
-	auto targetPid = PsGetProcessId(TargetProcess);
-	if ((int)targetPid == hgData.pid) {
+	ULONG targetPid = (ULONG)PsGetProcessId(TargetProcess);
+	if (targetPid == hgData.pid) {
 		return STATUS_SUCCESS;
 	}
 	return OriginalMmCopyVirtualMemory(SourceProcess, SourceAddress, TargetProcess, TargetAddress, BufferSize, PreviousMode, ReturnSize);
@@ -234,7 +238,7 @@ BOOLEAN HookedMmIsAddressValid(_In_ PVOID VirtualAddress) {
 	// 用户层
 	if (hgData.pid != 0 && hgData.userModelRegionStart != 0 && hgData.userModelRegionEnd != 0 
 		&& hgData.userModelRegionStart != hgData.userModelRegionEnd) {
-		if ((int)PsGetCurrentProcessId() == hgData.pid 
+		if ((ULONG)PsGetCurrentProcessId() == hgData.pid 
 			&& VirtualAddress >= hgData.userModelRegionStart
 			&& VirtualAddress <= hgData.userModelRegionEnd) {
 			return false;
@@ -251,7 +255,7 @@ VOID HookedProbeForRead(
 	// 是保护的地址，直接异常
 	if (hgData.pid != 0 && hgData.userModelRegionStart != 0 && hgData.userModelRegionEnd != 0
 		&& hgData.userModelRegionStart != hgData.userModelRegionEnd) {
-		if ((int)PsGetCurrentProcessId() == hgData.pid
+		if ((ULONG)PsGetCurrentProcessId() == hgData.pid
 			&& Address >= hgData.userModelRegionStart
 			&& Address <= hgData.userModelRegionEnd) {
 			ExRaiseDatatypeMisalignment();

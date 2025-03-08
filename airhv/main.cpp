@@ -50,17 +50,17 @@ PDRIVER_OBJECT gdriver_object;
  NTSTATUS Test() {
 	 LogInfo("TEST");
 	 HookAllNtFunction();
-	 auto start = ExAllocatePool(NonPagedPool, 1024);
-	 if (start) {
-		 RtlZeroMemory(start, 1024);
-		 *(char*)start = 3;
-		 auto base = gdriver_object->DriverStart;
-		 LogInfo("Current Driver base is %xll", base);
+	 // auto start = ExAllocatePool(NonPagedPool, 1024);
+	 //if (start) {
+		// RtlZeroMemory(start, 1024);
+		// *(char*)start = 3;
+		// auto base = gdriver_object->DriverStart;
+		// LogInfo("Current Driver base is %xll", base);
 
-		 // RtlCopyMemory(start, base, 20);
-		 return STATUS_SUCCESS;
-	 
-	 }
+		// // RtlCopyMemory(start, base, 20);
+		// return STATUS_SUCCESS;
+	 //
+	 //}
 	 return STATUS_SUCCESS;
 	 
 	 
