@@ -88,3 +88,50 @@ struct HookGlobalData {
 
 extern HookGlobalData hgData;
 
+//void UserModuleAddress(PVOID address);
+
+// 定义导出
+ULONG GetTicket();
+
+
+
+#define MASK_KEY 0x7758258
+
+enum ConnectType {
+	TEST,
+	PROTECT_FILE, // 保护文件
+	HIDE_R3_MEM,// 隐藏R3内存
+	HIDE_R0_MEM,// 隐藏R0内存
+	READ, // 读取
+	WRITE,// 写入
+	READ_PHY,// 读取物理内存
+	WRITE_PHY,// 写入物理内存
+	ALLOC, // 申请内存
+	KEY,
+	MOUSE
+};
+
+struct ConnectData {
+	ULONG MaskKey;
+	ULONG ConnectType; //ConnectType
+	PVOID Data; // MemData KeyData MouseData
+};
+
+struct MemData {
+	ULONG pid;// 目标进程id
+	PVOID address;
+	ULONG size;
+	PVOID buff; // 读取的内存|写入的内存
+};
+
+
+struct KeyData {
+
+
+
+};
+
+struct MouseData {
+
+
+};

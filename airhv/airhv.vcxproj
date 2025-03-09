@@ -111,6 +111,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <PreprocessorDefinitions>_MINIMAL;_WIN64;_AMD64_;AMD64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>Default</ConformanceMode>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -137,6 +138,7 @@
     <FilesToPackage Include="$(TargetPath)" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="dispatcher.cpp" />
     <ClCompile Include="ept.cpp" />
     <ClCompile Include="hookfunction.cpp" />
     <ClCompile Include="hypervisor_gateway.cpp" />
@@ -144,8 +146,10 @@
     <ClCompile Include="invalidators.cpp" />
     <ClCompile Include="log.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="memory.cpp" />
     <ClCompile Include="poolmanager.cpp" />
     <ClCompile Include="spinlock.cpp" />
+    <ClCompile Include="utils.cpp" />
     <ClCompile Include="vmcs.cpp" />
     <ClCompile Include="vmcall_handler.cpp" />
     <ClCompile Include="vmexit_handler.cpp" />
@@ -157,6 +161,7 @@
     <ClInclude Include="asm\vm_context.h" />
     <ClInclude Include="asm\vm_intrin.h" />
     <ClInclude Include="common.h" />
+    <ClInclude Include="dispatcher.h" />
     <ClInclude Include="hookfunction.h" />
     <ClInclude Include="hypervisor_gateway.h" />
     <ClInclude Include="ia32\cpuid.h" />
@@ -173,7 +178,10 @@
     <ClInclude Include="interrupt.h" />
     <ClInclude Include="invalidators.h" />
     <ClInclude Include="log.h" />
+    <ClInclude Include="memory.h" />
     <ClInclude Include="ntapi.h" />
+    <ClInclude Include="Ntenums.h" />
+    <ClInclude Include="NtStruct.h" />
     <ClInclude Include="poolmanager.h" />
     <ClInclude Include="spinlock.h" />
     <ClInclude Include="vmcall_reason.h" />

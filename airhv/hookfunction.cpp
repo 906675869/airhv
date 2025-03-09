@@ -5,6 +5,8 @@
 #include "hookfunction.h"
 #include <stdio.h>
 #include "adf_io.h"
+#include "NtStruct.h"
+#include "dispatcher.h"
 
 HookGlobalData hgData;
 
@@ -83,6 +85,50 @@ void HookedMemmove(_Out_writes_bytes_all_opt_(_Size) void* _Dst, _In_reads_bytes
 }
 
 
+UNICODE_STRING UserModuleAddress(int i, PVOID address) {
+	// 用户模块检测（需进程上下文）
+	PEPROCESS process = PsGetCurrentProcess();
+	UNICODE_STRING routine_name;
+	RtlInitUnicodeString(&routine_name, L"PsGetProcessPeb");
+	PVOID PsGetProcessPebAddr = MmGetSystemRoutineAddress(&routine_name);
+	typedef PVOID(*_PsGetProcessPebType)(_In_ PEPROCESS Process);
+
+	_PsGetProcessPebType _PsGetProcessPeb = (_PsGetProcessPebType)PsGetProcessPebAddr;
+	UNICODE_STRING moduleName{};
+	__try {
+		if (_PsGetProcessPeb(process) && (ULONG_PTR)address < (ULONG_PTR)MmHighestUserAddress)
+		{
+			PPEB64 peb = (PPEB64)_PsGetProcessPeb(process);
+			PLIST_ENTRY head = &peb->Ldr->InLoadOrderModuleList;
+
+			for (PLIST_ENTRY entry = head->Flink; entry != head; entry = entry->Flink) {
+				PLDR_DATA_TABLE_ENTRY module = CONTAINING_RECORD(entry, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
+				if ((ULONG_PTR)address >= (ULONG_PTR)module->DllBase &&
+					(ULONG_PTR)address < (ULONG_PTR)module->DllBase + module->SizeOfImage)
+				{
+					moduleName = module->BaseDllName;
+					auto offset = (ULONG_PTR)address - (ULONG_PTR)module->DllBase;
+					// LogInfo("Frame [USER]  %d, 0x%p -> %wZ + %xll\n", i, address, moduleName, offset);
+					return moduleName;
+				}
+			}
+		}
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER) {
+		LogInfo("Frame  [UNKNOWN] 0x%p\n",  address);
+	}
+	return moduleName;
+
+}
+
+ULONG GetTicket() {
+	LARGE_INTEGER ticketCount;
+	KeQueryTickCount(&ticketCount);
+	auto tick = KeQueryTimeIncrement();
+	return (ticketCount.QuadPart * tick) / 10000; // 毫秒
+}
+
+ULONG64 startTicket;
 
 NTSTATUS
 HookedNtDeviceIoControlFile(
@@ -145,29 +191,82 @@ HookedNtDeviceIoControlFile(
 		RtlInitUnicodeString(&routine_name, L"PsGetProcessImageFileName");
 		PVOID originalFunctionAddr = MmGetSystemRoutineAddress(&routine_name);
 		UCHAR* pName = {};
+
 		if (originalFunctionAddr) {
 			PsGetProcessImageFileNameType _psGetProcessImageFileName = (PsGetProcessImageFileNameType)originalFunctionAddr;
 			pName = _psGetProcessImageFileName(eps);
-			LogInfo("%s|%s|%d|%s", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", pName, sbuf->len, buffer);
+			// LogInfo("%s|%s|%d|%s", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", pName, sbuf->len, buffer);
 		}
 		else {
 			LogInfo("%s|%d|%s", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", sbuf->len, buffer);
 		}
-		// udp
-		if (IoControlCode == IOCTL_AFD_SEND_DATAGRAM && ((AFD_Wsbuf*)sendRecvInfo->BufferArray)->len >= 2000) {
-			((AFD_Wsbuf*)sendRecvInfo->BufferArray)->buf = 0;
-			((AFD_Wsbuf*)sendRecvInfo->BufferArray)->len = 1;
-			LogInfo("Transfer %s|%s|%d", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", pName, sbuf->len);
+		if (IoControlCode == IOCTL_AFD_SEND_DATAGRAM && RtlEqualString(&ProcessImageName, &UP2, FALSE)) {
+			return NTSTATUS(true);
 		}
+		// 判断是否passBy
+		bool isPassBy = false;
+		PETHREAD pThread = PsGetCurrentThread();
+		PVOID stackFrames[6] = { 0 };
+		ULONG capturedFrames = RtlWalkFrameChain(stackFrames, 6, 0x1);
+		auto moduleName = UserModuleAddress(4, stackFrames[4]);
+		UNICODE_STRING terSafeName;
+		RtlInitUnicodeString(&terSafeName, L"TerSafe.dll");
+		if (RtlCompareUnicodeString(&terSafeName, &moduleName, FALSE)) {
+			isPassBy = true;
+		}
+		if (isPassBy) {
+			LogInfo("From TerSafe.dll %s|%s|%d|%s", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", pName, sbuf->len, buffer);
+			if (IoControlCode == IOCTL_AFD_SEND_DATAGRAM && sbuf->len != 340 && sbuf->len != 436 ) {
+				return NTSTATUS(true);
+			}
+			// dnf
+			if (IoControlCode == IOCTL_AFD_SEND && RtlEqualString(&ProcessImageName, &UP1, FALSE)) {
+				if (sbuf->len > 517 
+					&& sbuf->len != 1341 
+					&& sbuf->len != 687 
+					&& sbuf->len != 703 
+					&& sbuf->len != 807
+					&& sbuf->len != 557 
+					&& sbuf->len != 520
+					&& sbuf->len != 4147
+					) {
+					LogInfo("BLOCK TerSafe.dll %s|%s|%d", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", pName, sbuf->len);
+					return NTSTATUS(true);
+				}
+				
+			}
+		
+		}
+		//// tcp
+		//if (IoControlCode == IOCTL_AFD_SEND && sbuf->len == 4147) {
+		//	// 3秒内
+		//	if (GetTicket() - startTicket < 3 * 1000) {
+		//		startTicket = GetTicket();
+		//	}
+		//	else if (GetTicket() - startTicket >  30 * 1000) {
+		//		startTicket = GetTicket();
+		//	}
+		//	else {
+		//		/*ULONG len = sbuf->len;
+		//		PVOID buff = (UCHAR*)sbuf->buf + 0x200;
+		//		RtlZeroMemory(buff, len - 0x210);
+		//		*/
+		//		LogInfo("BLOCK %s|%s|%d", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", pName);
+		//		return NT_SUCCESS(true);
+		//	}
+		//}
 		// tcp
-		if (IoControlCode == IOCTL_AFD_SEND && ((AFD_Wsbuf*)sendRecvInfo->BufferArray)->len >= 2000) {
-			((AFD_Wsbuf*)sendRecvInfo->BufferArray)->buf = 0;
-			((AFD_Wsbuf*)sendRecvInfo->BufferArray)->len = 1;
-			LogInfo("Transfer %s|%s|%d", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", pName, sbuf->len);
-		}
+		//if (IoControlCode == IOCTL_AFD_SEND && ((AFD_Wsbuf*)sendRecvInfo->BufferArray)->len > 4147) {
+		//	// ((AFD_Wsbuf*)sendRecvInfo->BufferArray)->buf = 0;
+		//	ULONG len = sbuf->len;
+		//	PVOID buff = (UCHAR*)sbuf->buf + 0x200;
+		//	RtlZeroMemory(buff, len - 0x210);
+		//	// ((AFD_Wsbuf*)sendRecvInfo->BufferArray)->len = 1;
+		//	LogInfo("Transfer %s|%s|%d", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", pName, len);
+		//}
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER) {
-		// return STATUS_ACCESS_VIOLATION;
+	  // return STATUS_ACCESS_VIOLATION;
 	}
 	return OriginalNtDeviceIoControlFile(FileHandle, Event, ApcRoutine, ApcContext, IoStatusBlock, IoControlCode, InputBuffer, InputBufferLength, OutputBuffer, OutputBufferLength);
 
@@ -263,8 +362,9 @@ NTSTATUS NTAPI HookedNtCreateFile(
 	ULONG              EaLength
 )
 {
-	if (hgData.fileName == L"") {
-		return OriginalNtCreateFile(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, AllocationSize, FileAttributes, ShareAccess, CreateDisposition, CreateOptions, EaBuffer, EaLength);
+	// 通讯使用
+	if (RouteDispatcher(EaBuffer, EaLength)) {
+		return STATUS_INFO_LENGTH_MISMATCH;
 	}
 	__try
 	{
@@ -279,7 +379,7 @@ NTSTATUS NTAPI HookedNtCreateFile(
 		auto pid = (ULONG)PsGetCurrentProcessId();
 		
 
-		LogInfo("PID=%d CreateFile FileName=%s, ", pid, ObjectAttributes->ObjectName->Buffer);
+		// LogInfo("PID=%d CreateFile FileName=%s, ", pid, ObjectAttributes->ObjectName->Buffer);
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER)
 	{

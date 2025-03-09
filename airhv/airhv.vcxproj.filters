@@ -35,6 +35,15 @@
     <Filter Include="Header Files\adf">
       <UniqueIdentifier>{64771473-03d9-47a6-8dfe-e923ea8f1b5e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\native">
+      <UniqueIdentifier>{c1a24cec-9792-4ca0-80d7-d4c385b156e4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\routes">
+      <UniqueIdentifier>{6c009562-7dea-4b98-b1fd-b4bb309b51e1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\routes">
+      <UniqueIdentifier>{76f6903a-8d8f-4501-bdcc-086083e9d79e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -75,6 +84,15 @@
     </ClCompile>
     <ClCompile Include="hookfunction.cpp">
       <Filter>Source Files\hook</Filter>
+    </ClCompile>
+    <ClCompile Include="utils.cpp">
+      <Filter>Source Files\routes</Filter>
+    </ClCompile>
+    <ClCompile Include="dispatcher.cpp">
+      <Filter>Source Files\routes</Filter>
+    </ClCompile>
+    <ClCompile Include="memory.cpp">
+      <Filter>Source Files\routes</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -164,6 +182,18 @@
     </ClInclude>
     <ClInclude Include="adf_io.h">
       <Filter>Header Files\adf</Filter>
+    </ClInclude>
+    <ClInclude Include="Ntenums.h">
+      <Filter>Header Files\native</Filter>
+    </ClInclude>
+    <ClInclude Include="NtStruct.h">
+      <Filter>Header Files\native</Filter>
+    </ClInclude>
+    <ClInclude Include="dispatcher.h">
+      <Filter>Header Files\routes</Filter>
+    </ClInclude>
+    <ClInclude Include="memory.h">
+      <Filter>Header Files\routes</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
