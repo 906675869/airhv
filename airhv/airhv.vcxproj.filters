@@ -32,6 +32,9 @@
     <Filter Include="Header Files\hook">
       <UniqueIdentifier>{c8fa47ef-ef6b-4f08-a240-36ffcc27288a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\adf">
+      <UniqueIdentifier>{64771473-03d9-47a6-8dfe-e923ea8f1b5e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -158,6 +161,9 @@
     </ClInclude>
     <ClInclude Include="hookfunction.h">
       <Filter>Header Files\hook</Filter>
+    </ClInclude>
+    <ClInclude Include="adf_io.h">
+      <Filter>Header Files\adf</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

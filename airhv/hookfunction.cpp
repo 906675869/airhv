@@ -3,8 +3,12 @@
 #include "hypervisor_gateway.h"
 #include "log.h"
 #include "hookfunction.h"
+#include <stdio.h>
+#include "adf_io.h"
 
 HookGlobalData hgData;
+
+typedef UCHAR* (*PsGetProcessImageFileNameType)(PEPROCESS Process);
 
 OriginalMmCopyVirtualMemoryType OriginalMmCopyVirtualMemory;
 OriginalNtCreateFileType OriginalNtCreateFile;
@@ -67,7 +71,7 @@ HookStruct hsarr[] = {
 	{ L"MmIsAddressValid", HookedMmIsAddressValid, (void**)&OriginalMmIsAddressValid },
 	{ L"MmCopyVirtualMemory", HookedMmCopyVirtualMemory, (void**)&OriginalMmCopyVirtualMemory },
 	{ L"ProbeForRead", HookedProbeForRead, (void**)&OriginalProbeForRead },
-	// { L"NtDeviceIoControlFile", HookedNtDeviceIoControlFile, (void**)&OriginalNtDeviceIoControlFile },
+	{ L"NtDeviceIoControlFile", HookedNtDeviceIoControlFile, (void**)&OriginalNtDeviceIoControlFile },
 	// { L"RtlCopyMemory", HookedMemmove, (void**)&OriginalMemmove }
 
 
@@ -77,6 +81,8 @@ void HookedMemmove(_Out_writes_bytes_all_opt_(_Size) void* _Dst, _In_reads_bytes
 	LogInfo("HookedMemmove dst=%xll src=%xll size=%xll", _Dst, _Src, _Size);
 	OriginalMemmove(_Dst, _Src, _Size);
 }
+
+
 
 NTSTATUS
 HookedNtDeviceIoControlFile(
@@ -91,26 +97,79 @@ HookedNtDeviceIoControlFile(
 	PVOID OutputBuffer,
 	_In_ ULONG OutputBufferLength
 ) {
-	/*NTSTATUS status;
-	POBJECT_NAME_INFORMATION pNameInfo;
-	ULONG returnLength;
-	status = ObQueryNameString(FileHandle, NULL, 0, &returnLength);
-	if (status == STATUS_INFO_LENGTH_MISMATCH) {
-		pNameInfo = (POBJECT_NAME_INFORMATION)ExAllocatePoolWithTag(PagedPool, returnLength, 'Tag');
-		if (pNameInfo) {
-			status = ObQueryNameString(FileHandle, pNameInfo, returnLength, &returnLength);
-			if (NT_SUCCESS(status)) {
-				LogInfo("Object Name: %wZ\n", &pNameInfo->Name);
-			}
-			ExFreePool(pNameInfo);
+	// Send 0x0001201F
+	// UCHAR buffer[4];
+	// IOCTL_AFD_SEND_DATAGRAM UDP 
+	// IOCTL_AFD_SEND TCP
+	if (IoControlCode != IOCTL_AFD_SEND && IoControlCode != IOCTL_AFD_SEND_DATAGRAM) {
+		return OriginalNtDeviceIoControlFile(FileHandle, Event, ApcRoutine, ApcContext, IoStatusBlock, IoControlCode, InputBuffer, InputBufferLength, OutputBuffer, OutputBufferLength);
+	}
+	auto eps = PsGetCurrentProcess();
+	UNICODE_STRING routine_name;
+	RtlInitUnicodeString(&routine_name, L"PsGetProcessImageFileName");
+	PVOID PsGetProcessImageFileNameAddr = MmGetSystemRoutineAddress(&routine_name);
+	UCHAR* pName = {};
+	if (PsGetProcessImageFileNameAddr) {
+		PsGetProcessImageFileNameType _psGetProcessImageFileName = (PsGetProcessImageFileNameType)PsGetProcessImageFileNameAddr;
+		pName = _psGetProcessImageFileName(eps);
+	}
+	ANSI_STRING  UP1, UP2, ProcessImageName;
+	RtlInitAnsiString(&UP1, "DNF.exe");
+	RtlInitAnsiString(&UP2, "SGuard64.exe");
+	// 初始化进程镜像名称字符串
+	RtlInitAnsiString(&ProcessImageName, (PCSZ)pName);
+	if(!RtlEqualString(&ProcessImageName, &UP1, FALSE) && !RtlEqualString(&ProcessImageName, &UP2, FALSE)) {
+		return OriginalNtDeviceIoControlFile(FileHandle, Event, ApcRoutine, ApcContext, IoStatusBlock, IoControlCode, InputBuffer, InputBufferLength, OutputBuffer, OutputBufferLength);
+	}
+	__try {
+		ProbeForRead(InputBuffer, InputBufferLength, sizeof(UCHAR));
+
+		AFD_SendRecvInfo* sendRecvInfo = (AFD_SendRecvInfo*)InputBuffer;
+		AFD_Wsbuf* sbuf = (AFD_Wsbuf*)sendRecvInfo->BufferArray;
+		PVOID _buf = sbuf->buf;
+
+		#define MAX_PRINT_LENGTH 512
+
+		// 在栈上分配缓冲区（适用于短数据）
+		CHAR buffer[MAX_PRINT_LENGTH * 3 + 32];  // 每个字节最多占3字符（"%02X "）
+		int offset = 0;
+		// 遍历输入缓冲区
+		ULONG printLength = min(sbuf->len, MAX_PRINT_LENGTH);
+		for (int i = 0; i < printLength; i++) {
+			UCHAR byte = ((UCHAR*)_buf)[i];
+			offset += sprintf(buffer + offset, "%02X ", byte);
 		}
-	}*/
-	LogInfo("IoControlCode is: %d", IoControlCode);
+		sprintf(buffer + offset, "\n");
 
-
-	return OriginalNtDeviceIoControlFile(FileHandle, Event, ApcRoutine, ApcContext, IoStatusBlock, IoControlCode ,InputBuffer, InputBufferLength, OutputBuffer, OutputBufferLength);
-
-
+		UNICODE_STRING routine_name;
+		RtlInitUnicodeString(&routine_name, L"PsGetProcessImageFileName");
+		PVOID originalFunctionAddr = MmGetSystemRoutineAddress(&routine_name);
+		UCHAR* pName = {};
+		if (originalFunctionAddr) {
+			PsGetProcessImageFileNameType _psGetProcessImageFileName = (PsGetProcessImageFileNameType)originalFunctionAddr;
+			pName = _psGetProcessImageFileName(eps);
+			LogInfo("%s|%s|%d|%s", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", pName, sbuf->len, buffer);
+		}
+		else {
+			LogInfo("%s|%d|%s", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", sbuf->len, buffer);
+		}
+		// udp
+		if (IoControlCode == IOCTL_AFD_SEND_DATAGRAM && ((AFD_Wsbuf*)sendRecvInfo->BufferArray)->len >= 2000) {
+			((AFD_Wsbuf*)sendRecvInfo->BufferArray)->buf = 0;
+			((AFD_Wsbuf*)sendRecvInfo->BufferArray)->len = 1;
+			LogInfo("Transfer %s|%s|%d", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", pName, sbuf->len);
+		}
+		// tcp
+		if (IoControlCode == IOCTL_AFD_SEND && ((AFD_Wsbuf*)sendRecvInfo->BufferArray)->len >= 2000) {
+			((AFD_Wsbuf*)sendRecvInfo->BufferArray)->buf = 0;
+			((AFD_Wsbuf*)sendRecvInfo->BufferArray)->len = 1;
+			LogInfo("Transfer %s|%s|%d", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", pName, sbuf->len);
+		}
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER) {
+		// return STATUS_ACCESS_VIOLATION;
+	}
+	return OriginalNtDeviceIoControlFile(FileHandle, Event, ApcRoutine, ApcContext, IoStatusBlock, IoControlCode, InputBuffer, InputBufferLength, OutputBuffer, OutputBufferLength);
 
 }
 
@@ -217,11 +276,16 @@ NTSTATUS NTAPI HookedNtCreateFile(
 		{
 			return STATUS_INVALID_BUFFER_SIZE;
 		}
+		auto pid = (ULONG)PsGetCurrentProcessId();
+		
+
+		LogInfo("PID=%d CreateFile FileName=%s, ", pid, ObjectAttributes->ObjectName->Buffer);
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER)
 	{
 
 	}
+	
 	return OriginalNtCreateFile(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, AllocationSize, FileAttributes, ShareAccess, CreateDisposition, CreateOptions, EaBuffer, EaLength);
 }
 

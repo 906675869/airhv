@@ -152,6 +152,7 @@
     <ClCompile Include="vmm.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="adf_io.h" />
     <ClInclude Include="allocators.h" />
     <ClInclude Include="asm\vm_context.h" />
     <ClInclude Include="asm\vm_intrin.h" />
