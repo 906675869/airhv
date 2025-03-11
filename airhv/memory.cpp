@@ -14,8 +14,7 @@ OriginalMmCopyVirtualMemoryType GetMmCopyVirtualMemoryType() {
     UNICODE_STRING routine_name;
     RtlInitUnicodeString(&routine_name, L"MmCopyVirtualMemory");
     PVOID originalFunctionAddr = MmGetSystemRoutineAddress(&routine_name);
-    OriginalMmCopyVirtualMemoryType OriginalMmCopyVirtualMemory = (OriginalMmCopyVirtualMemoryType)originalFunctionAddr;
-    return OriginalMmCopyVirtualMemory;
+    return (OriginalMmCopyVirtualMemoryType)originalFunctionAddr;
 }
 
 NTSTATUS ReadMem(MemData* mData) {
