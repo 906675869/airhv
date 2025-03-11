@@ -1,6 +1,7 @@
 #pragma once
 #include <wdm.h>
 
+
 typedef NTSTATUS(*OriginalMmCopyVirtualMemoryType)(PEPROCESS SourceProcess, PVOID SourceAddress, PEPROCESS TargetProcess, PVOID TargetAddress, SIZE_T BufferSize, KPROCESSOR_MODE PreviousMode, PSIZE_T ReturnSize);
 
 
@@ -75,15 +76,15 @@ struct HookGlobalData {
 	ULONG pid = 0; // 被保护的进程
 
 	// 被保护的内核空间
-	PVOID regionStart;
-	PVOID regionEnd;
+	PVOID regionStart=0;
+	PVOID regionEnd=0;
 
 	// 被保护的用户控件
-	PVOID userModelRegionStart;
-	PVOID userModelRegionEnd;
+	PVOID userModelRegionStart=0;
+	PVOID userModelRegionEnd=0;
 
 	// 被保护的文件名
-	wchar_t* fileName=L"";
+	wchar_t* fileName=L"hv.sys";
 };
 
 extern HookGlobalData hgData;
@@ -125,13 +126,42 @@ struct MemData {
 };
 
 
-struct KeyData {
+typedef struct _KEYBOARD_INPUT_DATA {
+	USHORT UnitId;
+
+	USHORT MakeCode;
+
+	USHORT Flags;
+
+	USHORT Reserved;
+
+	ULONG ExtraInformation;
+
+} KEYBOARD_INPUT_DATA, * PKEYBOARD_INPUT_DATA;
 
 
+typedef struct _MOUSE_INPUT_DATA {
 
-};
+	USHORT UnitId;
 
-struct MouseData {
+	USHORT Flags;
+
+	union {
+		ULONG Buttons;
+		struct {
+			USHORT  ButtonFlags;
+			USHORT  ButtonData;
+		};
+	};
+
+	ULONG RawButtons;
+
+	LONG LastX;
+
+	LONG LastY;
+
+	ULONG ExtraInformation;
+
+} MOUSE_INPUT_DATA, * PMOUSE_INPUT_DATA;
 
 
-};

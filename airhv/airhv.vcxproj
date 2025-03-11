@@ -144,6 +144,7 @@
     <ClCompile Include="hypervisor_gateway.cpp" />
     <ClCompile Include="hypervisor_routines.cpp" />
     <ClCompile Include="invalidators.cpp" />
+    <ClCompile Include="kmclass.cpp" />
     <ClCompile Include="log.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="memory.cpp" />
@@ -177,6 +178,8 @@
     <ClInclude Include="hypervisor_routines.h" />
     <ClInclude Include="interrupt.h" />
     <ClInclude Include="invalidators.h" />
+    <ClInclude Include="kmclass.h" />
+    <ClInclude Include="kmclass_common.h" />
     <ClInclude Include="log.h" />
     <ClInclude Include="memory.h" />
     <ClInclude Include="ntapi.h" />
@@ -184,6 +187,7 @@
     <ClInclude Include="NtStruct.h" />
     <ClInclude Include="poolmanager.h" />
     <ClInclude Include="spinlock.h" />
+    <ClInclude Include="utils.h" />
     <ClInclude Include="vmcall_reason.h" />
     <ClInclude Include="vmcall_handler.h" />
     <ClInclude Include="vmexit_handler.h" />

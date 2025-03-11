@@ -1,11 +1,6 @@
 #include <ntifs.h>
-#include "hypervisor_gateway.h"
-#include "log.h"
-#include "hookfunction.h"
 #include <stdio.h>
-#include "adf_io.h"
-#include "NtStruct.h"
-#include "dispatcher.h"
+#include "memory.h"
 
 OriginalMmCopyVirtualMemoryType GetMmCopyVirtualMemoryType() {
     if (OriginalMmCopyVirtualMemory != nullptr) {

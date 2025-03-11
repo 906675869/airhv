@@ -7,6 +7,9 @@
 #include "hypervisor_gateway.h"
 #include "vmm.h"
 #include "hookfunction.h"
+//#include "kmclass.h"
+#include "dispatcher.h"
+#include "kmclass.h"
 
 #define IOCTL_POOL_MANAGER_ALLOCATE CTL_CODE(FILE_DEVICE_UNKNOWN, 0x900, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
 #define IOCTL_TEST CTL_CODE(FILE_DEVICE_UNKNOWN, 0x901, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
@@ -143,6 +146,18 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PCUNICODE_STRING reg)
 		LogError("Vmm initialization failed");
 		return STATUS_FAILED_DRIVER_ENTRY;
 	}
-
+	status = SearchKdbServiceCallBack(gdriver_object);
+	if (!NT_SUCCESS(status))
+	{
+		LogError("KEYBOARD_DEVICE ERROR, error = 0x%08lx\n", status);
+		return status;
+	}
+	//// ËÑË÷Êó±ê
+	status = SearchMouServiceCallBack(gdriver_object);
+	if (!NT_SUCCESS(status))
+	{
+		LogError("MOUSE_DEVICE ERROR, error = 0x%08lx\n", status);
+		return status;
+	}
 	return status;
 }

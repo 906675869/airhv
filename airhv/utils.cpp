@@ -1,7 +1,8 @@
 #pragma warning( disable : 4201 4805)
 #include <ntddk.h>
 #include <intrin.h>
-
+#include "utils.h"
+#include "log.h"
 /// <summary>
 /// Allocate new Unicode string from Paged pool
 /// </summary>
@@ -14,7 +15,7 @@ NTSTATUS SafeAllocateString(OUT PUNICODE_STRING result, IN USHORT size)
     if (result == NULL || size == 0)
         return STATUS_INVALID_PARAMETER;
 
-    result->Buffer = ExAllocatePoolWithTag(PagedPool, size, 'A');
+    result->Buffer = (PWCH)ExAllocatePoolWithTag(PagedPool, size, 'A');
     result->Length = 0;
     result->MaximumLength = size;
 
@@ -46,7 +47,7 @@ NTSTATUS SafeInitString(OUT PUNICODE_STRING result, IN PUNICODE_STRING source)
         return STATUS_SUCCESS;
     }
 
-    result->Buffer = ExAllocatePoolWithTag(PagedPool, source->MaximumLength, 'A');
+    result->Buffer = (PWCH)ExAllocatePoolWithTag(PagedPool, source->MaximumLength, 'A');
     result->Length = source->Length;
     result->MaximumLength = source->MaximumLength;
 
@@ -216,4 +217,17 @@ NTSTATUS SearchPattern(IN PCUCHAR pattern, IN UCHAR wildcard, IN ULONG_PTR len, 
     }
 
     return STATUS_NOT_FOUND;
+}
+
+/*
+    GetKernelExportAddr
+*/
+PVOID GetKernelExportAddr(PCWSTR fName) {
+    UNICODE_STRING fNameUStr;
+    RtlInitUnicodeString(&fNameUStr, fName);
+    PVOID result = MmGetSystemRoutineAddress(&fNameUStr);
+    if (!result || !MmIsAddressValid(result)) {
+        LogError("MmGetSystemRoutineAddress Get Address Fail %wZ", fNameUStr);
+    }
+    return result;
 }

@@ -85,13 +85,16 @@
     <ClCompile Include="hookfunction.cpp">
       <Filter>Source Files\hook</Filter>
     </ClCompile>
-    <ClCompile Include="utils.cpp">
-      <Filter>Source Files\routes</Filter>
-    </ClCompile>
     <ClCompile Include="dispatcher.cpp">
       <Filter>Source Files\routes</Filter>
     </ClCompile>
     <ClCompile Include="memory.cpp">
+      <Filter>Source Files\routes</Filter>
+    </ClCompile>
+    <ClCompile Include="kmclass.cpp">
+      <Filter>Source Files\routes</Filter>
+    </ClCompile>
+    <ClCompile Include="utils.cpp">
       <Filter>Source Files\routes</Filter>
     </ClCompile>
   </ItemGroup>
@@ -193,6 +196,15 @@
       <Filter>Header Files\routes</Filter>
     </ClInclude>
     <ClInclude Include="memory.h">
+      <Filter>Header Files\routes</Filter>
+    </ClInclude>
+    <ClInclude Include="kmclass.h">
+      <Filter>Header Files\routes</Filter>
+    </ClInclude>
+    <ClInclude Include="kmclass_common.h">
+      <Filter>Header Files\routes</Filter>
+    </ClInclude>
+    <ClInclude Include="utils.h">
       <Filter>Header Files\routes</Filter>
     </ClInclude>
   </ItemGroup>

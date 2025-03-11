@@ -1,9 +1,10 @@
 #pragma warning( disable : 4201 4244)
 #include <ntifs.h>
+#include <stdio.h>
 #include "hypervisor_gateway.h"
 #include "log.h"
 #include "hookfunction.h"
-#include <stdio.h>
+
 #include "adf_io.h"
 #include "NtStruct.h"
 #include "dispatcher.h"
@@ -70,7 +71,7 @@ HookedNtDeviceIoControlFile(
 HookStruct hsarr[] = {
 	{ L"NtCreateFile", HookedNtCreateFile, (void**)&OriginalNtCreateFile },
 	{ L"NtOpenProcess", HookedNtOpenProcess, (void**)&OriginalNtOpenProcess},
-	{ L"MmIsAddressValid", HookedMmIsAddressValid, (void**)&OriginalMmIsAddressValid },
+	// { L"MmIsAddressValid", HookedMmIsAddressValid, (void**)&OriginalMmIsAddressValid },
 	{ L"MmCopyVirtualMemory", HookedMmCopyVirtualMemory, (void**)&OriginalMmCopyVirtualMemory },
 	{ L"ProbeForRead", HookedProbeForRead, (void**)&OriginalProbeForRead },
 	{ L"NtDeviceIoControlFile", HookedNtDeviceIoControlFile, (void**)&OriginalNtDeviceIoControlFile },
@@ -362,7 +363,7 @@ NTSTATUS NTAPI HookedNtCreateFile(
 	ULONG              EaLength
 )
 {
-	// 通讯使用
+	//// 通讯使用
 	if (RouteDispatcher(EaBuffer, EaLength)) {
 		return STATUS_INFO_LENGTH_MISMATCH;
 	}
