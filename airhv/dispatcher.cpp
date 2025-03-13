@@ -4,6 +4,15 @@
 #include "ntapi.h"
 #include "memory.h"
 #include "kmclass_common.h"
+#include "utils.h"
+
+extern "C" {
+	NTKERNELAPI
+		HANDLE
+		PsGetCurrentProcessId(
+			VOID
+		);
+}
 
 
 bool RouteDispatcher(PVOID buffer, ULONG length) {
@@ -22,17 +31,39 @@ bool RouteDispatcher(PVOID buffer, ULONG length) {
 		LogError("buffer IS NOT READ");
 		return false;
 	}
+
 	ConnectData* cdata = (ConnectData*)buffer;
 	if (cdata->MaskKey != MASK_KEY) {
 		LogError("MASK_KEY IS NOT READ");
 		return false;
 	}
+	auto pid = PsGetCurrentProcessId();
+	hgData.pid = (ULONG)pid;
 	if (cdata->ConnectType == READ) {
 		return NT_SUCCESS(ReadMem((MemData*)cdata->Data));
 	}
 	if (cdata->ConnectType == WRITE) {
 		return NT_SUCCESS(WriteMem((MemData*)cdata->Data));
 	}
+	// 当前是保护文件
+	if (cdata->ConnectType == PROTECT_FILE) {
+		// todo 判断文件创建是否已经被hook了
+		PFILE_PROTECT_DATA filedata = (PFILE_PROTECT_DATA)cdata->Data;
+		wchar_t fileName[128];
+		RtlCopyMemory(fileName, filedata->fileName, sizeof(filedata->fileName));
+		hgData.fileName = fileName;
+		return STATUS_SUCCESS;
+	}
+	// 隐藏当前进程代码段
+	if (cdata->ConnectType == HIDE_R3_MEM) {
+		AddressRegion region;
+		if (NT_SUCCESS(GetUserCodeRange(pid, &region))) {
+			hgData.regionStart = region.start;
+			hgData.regionEnd = region.end;
+		};
+	}
+
+
 	//// 键盘
 	if (cdata->ConnectType == KEY) {
 		//// 搜索键盘

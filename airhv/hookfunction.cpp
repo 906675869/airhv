@@ -8,6 +8,7 @@
 #include "adf_io.h"
 #include "NtStruct.h"
 #include "dispatcher.h"
+#include "utils.h"
 
 HookGlobalData hgData;
 
@@ -111,10 +112,10 @@ ULONG HookedRtlWalkFrameChain(
 }
 
 
-void HookedMemmove(_Out_writes_bytes_all_opt_(_Size) void* _Dst, _In_reads_bytes_opt_(_Size) const void* _Src, _In_ size_t _Size) {
-	LogInfo("HookedMemmove dst=%xll src=%xll size=%xll", _Dst, _Src, _Size);
-	OriginalMemmove(_Dst, _Src, _Size);
-}
+//void HookedMemmove(_Out_writes_bytes_all_opt_(_Size) void* _Dst, _In_reads_bytes_opt_(_Size) const void* _Src, _In_ size_t _Size) {
+//	LogInfo("HookedMemmove dst=%xll src=%xll size=%xll", _Dst, _Src, _Size);
+//	OriginalMemmove(_Dst, _Src, _Size);
+//}
 
 
 UNICODE_STRING UserModuleAddress(int i, PVOID address) {
@@ -267,35 +268,7 @@ HookedNtDeviceIoControlFile(
 				}
 				
 			}
-		
 		}
-		//// tcp
-		//if (IoControlCode == IOCTL_AFD_SEND && sbuf->len == 4147) {
-		//	// 3秒内
-		//	if (GetTicket() - startTicket < 3 * 1000) {
-		//		startTicket = GetTicket();
-		//	}
-		//	else if (GetTicket() - startTicket >  30 * 1000) {
-		//		startTicket = GetTicket();
-		//	}
-		//	else {
-		//		/*ULONG len = sbuf->len;
-		//		PVOID buff = (UCHAR*)sbuf->buf + 0x200;
-		//		RtlZeroMemory(buff, len - 0x210);
-		//		*/
-		//		LogInfo("BLOCK %s|%s|%d", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", pName);
-		//		return NT_SUCCESS(true);
-		//	}
-		//}
-		// tcp
-		//if (IoControlCode == IOCTL_AFD_SEND && ((AFD_Wsbuf*)sendRecvInfo->BufferArray)->len > 4147) {
-		//	// ((AFD_Wsbuf*)sendRecvInfo->BufferArray)->buf = 0;
-		//	ULONG len = sbuf->len;
-		//	PVOID buff = (UCHAR*)sbuf->buf + 0x200;
-		//	RtlZeroMemory(buff, len - 0x210);
-		//	// ((AFD_Wsbuf*)sendRecvInfo->BufferArray)->len = 1;
-		//	LogInfo("Transfer %s|%s|%d", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", pName, len);
-		//}
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER) {
 	  // return STATUS_ACCESS_VIOLATION;
@@ -309,24 +282,20 @@ HookedNtDeviceIoControlFile(
 
 
 void HookAllNtFunction() {
-	LogInfo("Start HookAllFunction~");
+	// LogInfo("Start HookAllFunction~");
 	// 隐藏
-	hvgt::hypervisor_visible(false);
-
 	for (const auto& hs : hsarr) {
-		UNICODE_STRING routine_name;
-		RtlInitUnicodeString(&routine_name, hs.SourceString);
-		PVOID originalFunctionAddr = MmGetSystemRoutineAddress(&routine_name);
+		PVOID originalFunctionAddr = GetKernelExportAddr(hs.SourceString);
 		if (!originalFunctionAddr) {
-			LogError("MmGetSystemRoutineAddress Get Address Fail %wZ", routine_name);
+			LogError("MmGetSystemRoutineAddress Get Address Fail %s", hs.SourceString);
 			break;
 		}
 		if (!hvgt::hook_function(originalFunctionAddr, hs.hookFunction, hs.originFunction)) {
-			LogError("Couldn't hook %wZ", routine_name);
+			LogError("Couldn't hook %s", hs.SourceString);
 			break;
 		}
 		else {
-			LogInfo("Hook Function Success %wZ", routine_name);
+			LogInfo("Hook Function Success %s", hs.SourceString);
 		}
 	}
 	LogInfo("HookAllFunction Success!");
@@ -338,12 +307,12 @@ NTSTATUS HookedMmCopyVirtualMemory(PEPROCESS SourceProcess, PVOID SourceAddress,
 	if (hgData.pid == 0) {
 		return OriginalMmCopyVirtualMemory(SourceProcess, SourceAddress, TargetProcess, TargetAddress, BufferSize, PreviousMode, ReturnSize);
 	}
-	ULONG pid = (ULONG)PsGetProcessId(SourceProcess);
-	if (pid == hgData.pid) {
-		return STATUS_SUCCESS;
-	}
-	ULONG targetPid = (ULONG)PsGetProcessId(TargetProcess);
-	if (targetPid == hgData.pid) {
+	// 判断被读取的进程是否是被保护的进程
+	if ((ULONG)PsGetProcessId(SourceProcess) == hgData.pid) {
+		if (SourceAddress  > hgData.regionStart && SourceAddress < hgData.regionEnd){
+			RtlFillMemory(TargetAddress, BufferSize, 0xCC);
+			return STATUS_SUCCESS;
+		}
 		return STATUS_SUCCESS;
 	}
 	return OriginalMmCopyVirtualMemory(SourceProcess, SourceAddress, TargetProcess, TargetAddress, BufferSize, PreviousMode, ReturnSize);
@@ -363,6 +332,12 @@ NTSTATUS HookedNtOpenProcess(OUT PHANDLE ProcessHandle,
 		__try
 		{
 			ProbeForRead(ClientId, sizeof(CLIENT_ID), sizeof(ULONG));
+			const auto Pid = (ULONG)ClientId->UniqueProcess;
+			const auto cPid = (ULONG)PsGetCurrentProcessId();
+			// 用户态自己打开自己
+			if (Pid == cPid) {
+				return OriginalNtOpenProcess(ProcessHandle, DesiredAccess, ObjectAttributes, ClientId);
+			}
 		}
 		__except (EXCEPTION_EXECUTE_HANDLER)
 		{
@@ -408,16 +383,13 @@ NTSTATUS NTAPI HookedNtCreateFile(
 		{
 			return STATUS_INVALID_BUFFER_SIZE;
 		}
-		auto pid = (ULONG)PsGetCurrentProcessId();
-		
-
+		// auto pid = (ULONG)PsGetCurrentProcessId();
 		// LogInfo("PID=%d CreateFile FileName=%s, ", pid, ObjectAttributes->ObjectName->Buffer);
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER)
 	{
 
 	}
-	
 	return OriginalNtCreateFile(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, AllocationSize, FileAttributes, ShareAccess, CreateDisposition, CreateOptions, EaBuffer, EaLength);
 }
 
@@ -425,18 +397,9 @@ NTSTATUS NTAPI HookedNtCreateFile(
 
 BOOLEAN HookedMmIsAddressValid(_In_ PVOID VirtualAddress) {
 	// 内核层
-	if (hgData.regionStart != 0 && hgData.regionEnd != 0 && hgData.regionStart != hgData.regionEnd) {
+	if (hgData.regionStart != 0 && hgData.regionEnd != 0) {
 		// 在区间
 		if (VirtualAddress >= hgData.regionStart && VirtualAddress <= hgData.regionEnd) {
-			return false;
-		}
-	}
-	// 用户层
-	if (hgData.pid != 0 && hgData.userModelRegionStart != 0 && hgData.userModelRegionEnd != 0 
-		&& hgData.userModelRegionStart != hgData.userModelRegionEnd) {
-		if ((ULONG)PsGetCurrentProcessId() == hgData.pid 
-			&& VirtualAddress >= hgData.userModelRegionStart
-			&& VirtualAddress <= hgData.userModelRegionEnd) {
 			return false;
 		}
 	}

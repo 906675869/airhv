@@ -109,7 +109,7 @@ enum ConnectType {
 	TEST,
 	PROTECT_FILE, // 保护文件
 	HIDE_R3_MEM,// 隐藏R3内存
-	HIDE_R0_MEM,// 隐藏R0内存
+	// HIDE_R0_MEM,// 隐藏R0内存
 	READ, // 读取
 	WRITE,// 写入
 	READ_PHY,// 读取物理内存
@@ -131,6 +131,11 @@ struct MemData {
 	ULONG size;
 	PVOID buff; // 读取的内存|写入的内存
 };
+
+typedef struct _FILE_PROTECT_DATA {
+	wchar_t fileName[128]; // 被保护的文件名
+
+}FILE_PROTECT_DATA, *PFILE_PROTECT_DATA;
 
 
 typedef struct _KEYBOARD_INPUT_DATA {

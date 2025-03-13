@@ -10,6 +10,7 @@
 //#include "kmclass.h"
 #include "dispatcher.h"
 #include "kmclass.h"
+#include "utils.h"
 
 #define IOCTL_POOL_MANAGER_ALLOCATE CTL_CODE(FILE_DEVICE_UNKNOWN, 0x900, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
 #define IOCTL_TEST CTL_CODE(FILE_DEVICE_UNKNOWN, 0x901, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
@@ -21,6 +22,7 @@ PDRIVER_OBJECT gdriver_object;
  VOID driver_unload(PDRIVER_OBJECT driver_object)
  {
 	 UNICODE_STRING dos_device_name;
+	 hvgt::hypervisor_visible(false);
 	 if(g_vmm_context != NULL)
 	 {
 		 if (g_vmm_context->vcpu_table[0]->vcpu_status.vmm_launched == true)
@@ -32,7 +34,6 @@ PDRIVER_OBJECT gdriver_object;
 
 	 hv::disable_vmx_operation();
 	 free_vmm_context();
-
 	 RtlInitUnicodeString(&dos_device_name, L"\\DosDevices\\airhv");
 	 IoDeleteSymbolicLink(&dos_device_name);
 	 IoDeleteDevice(driver_object->DeviceObject);
@@ -50,25 +51,25 @@ PDRIVER_OBJECT gdriver_object;
 	 return STATUS_SUCCESS;
  }
 
- NTSTATUS Test() {
-	 LogInfo("TEST");
-	 HookAllNtFunction();
-	 // auto start = ExAllocatePool(NonPagedPool, 1024);
-	 //if (start) {
-		// RtlZeroMemory(start, 1024);
-		// *(char*)start = 3;
-		// auto base = gdriver_object->DriverStart;
-		// LogInfo("Current Driver base is %xll", base);
+ //NTSTATUS Test() {
+	// LogInfo("TEST");
+	// HookAllNtFunction();
+	// // auto start = ExAllocatePool(NonPagedPool, 1024);
+	// //if (start) {
+	//	// RtlZeroMemory(start, 1024);
+	//	// *(char*)start = 3;
+	//	// auto base = gdriver_object->DriverStart;
+	//	// LogInfo("Current Driver base is %xll", base);
 
-		// // RtlCopyMemory(start, base, 20);
-		// return STATUS_SUCCESS;
-	 //
-	 //}
-	 return STATUS_SUCCESS;
-	 
-	 
-	
- }
+	//	// // RtlCopyMemory(start, base, 20);
+	//	// return STATUS_SUCCESS;
+	// //
+	// //}
+	// return STATUS_SUCCESS;
+	// 
+	// 
+	//
+ //}
 
 
  NTSTATUS driver_ioctl_dispatcher(_In_ PDEVICE_OBJECT device_object, _In_ PIRP irp)
@@ -88,11 +89,11 @@ PDRIVER_OBJECT gdriver_object;
 			 status = pool_manager::perform_allocation();
 			 break;
 		 }
-		 case IOCTL_TEST:
+		/* case IOCTL_TEST:
 		 {
 			 status = Test();
 			 break;
-		 }
+		 }*/
 	 }
 
 	 irp->IoStatus.Status = status;
@@ -146,18 +147,25 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PCUNICODE_STRING reg)
 		LogError("Vmm initialization failed");
 		return STATUS_FAILED_DRIVER_ENTRY;
 	}
-	status = SearchKdbServiceCallBack(gdriver_object);
+	status = SearchKdbServiceCallBack(driver_object);
 	if (!NT_SUCCESS(status))
 	{
 		LogError("KEYBOARD_DEVICE ERROR, error = 0x%08lx\n", status);
 		return status;
 	}
 	//// ËÑË÷Êó±ê
-	status = SearchMouServiceCallBack(gdriver_object);
+	status = SearchMouServiceCallBack(driver_object);
 	if (!NT_SUCCESS(status))
 	{
 		LogError("MOUSE_DEVICE ERROR, error = 0x%08lx\n", status);
 		return status;
 	}
+	// Òþ²Ø
+	hvgt::hypervisor_visible(false);
+	HookAllNtFunction();
+	AddressRegion region;
+	GetTextRegion(driver_object, &region);
+	hgData.regionStart = region.start;
+	hgData.regionEnd = region.end;
 	return status;
 }
