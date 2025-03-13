@@ -58,12 +58,10 @@ bool RouteDispatcher(PVOID buffer, ULONG length) {
 	if (cdata->ConnectType == HIDE_R3_MEM) {
 		AddressRegion region;
 		if (NT_SUCCESS(GetUserCodeRange(pid, &region))) {
-			hgData.regionStart = region.start;
-			hgData.regionEnd = region.end;
+			hgData.userModelRegionStart = region.start;
+			hgData.userModelRegionEnd = region.end;
 		};
 	}
-
-
 	//// ╪Эел
 	if (cdata->ConnectType == KEY) {
 		//// кякВ╪Эел

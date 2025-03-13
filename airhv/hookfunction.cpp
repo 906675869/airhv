@@ -192,12 +192,12 @@ HookedNtDeviceIoControlFile(
 		PsGetProcessImageFileNameType _psGetProcessImageFileName = (PsGetProcessImageFileNameType)PsGetProcessImageFileNameAddr;
 		pName = _psGetProcessImageFileName(eps);
 	}
-	ANSI_STRING  UP1, UP2, ProcessImageName;
-	RtlInitAnsiString(&UP1, "DNF.exe");
-	RtlInitAnsiString(&UP2, "SGuard64.exe");
+	ANSI_STRING  DNF, SGuard64, ProcessImageName;
+	RtlInitAnsiString(&DNF, "DNF.exe");
+	RtlInitAnsiString(&SGuard64, "SGuard64.exe");
 	// 初始化进程镜像名称字符串
 	RtlInitAnsiString(&ProcessImageName, (PCSZ)pName);
-	if(!RtlEqualString(&ProcessImageName, &UP1, FALSE) && !RtlEqualString(&ProcessImageName, &UP2, FALSE)) {
+	if(!RtlEqualString(&ProcessImageName, &DNF, FALSE) && !RtlEqualString(&ProcessImageName, &SGuard64, FALSE)) {
 		return OriginalNtDeviceIoControlFile(FileHandle, Event, ApcRoutine, ApcContext, IoStatusBlock, IoControlCode, InputBuffer, InputBufferLength, OutputBuffer, OutputBufferLength);
 	}
 	__try {
@@ -233,7 +233,8 @@ HookedNtDeviceIoControlFile(
 		else {
 			LogInfo("%s|%d|%s", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", sbuf->len, buffer);
 		}
-		if (IoControlCode == IOCTL_AFD_SEND_DATAGRAM && RtlEqualString(&ProcessImageName, &UP2, FALSE)) {
+		// SGuard64 的udp 直接拦截
+		if (IoControlCode == IOCTL_AFD_SEND_DATAGRAM && RtlEqualString(&ProcessImageName, &SGuard64, FALSE)) {
 			return NTSTATUS(true);
 		}
 		// 判断是否passBy
@@ -253,7 +254,7 @@ HookedNtDeviceIoControlFile(
 				return NTSTATUS(true);
 			}
 			// dnf
-			if (IoControlCode == IOCTL_AFD_SEND && RtlEqualString(&ProcessImageName, &UP1, FALSE)) {
+			if (IoControlCode == IOCTL_AFD_SEND && RtlEqualString(&ProcessImageName, &DNF, FALSE)) {
 				if (sbuf->len > 517 
 					&& sbuf->len != 1341 
 					&& sbuf->len != 687 
