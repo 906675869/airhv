@@ -5,8 +5,6 @@ VisualStudioVersion = 16.0.30907.101
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "airhv", "airhv\airhv.vcxproj", "{CC497BEE-6B9E-4732-8B60-35DFE6526C28}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "airhvctrl", "airhvctrl\airhvctrl.vcxproj", "{98E8F109-6A08-4461-A245-42B7CE32A703}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Test", "Test\Test.vcxproj", "{3D6105F0-4DD6-4B3A-A735-E39D107629B6}"
 EndProject
 Global
@@ -37,24 +35,6 @@ Global
 		{CC497BEE-6B9E-4732-8B60-35DFE6526C28}.Release|x64.Build.0 = Release|x64
 		{CC497BEE-6B9E-4732-8B60-35DFE6526C28}.Release|x64.Deploy.0 = Release|x64
 		{CC497BEE-6B9E-4732-8B60-35DFE6526C28}.Release|x86.ActiveCfg = Release|x64
-		{98E8F109-6A08-4461-A245-42B7CE32A703}.Debug_Minimal|x64.ActiveCfg = Debug|x64
-		{98E8F109-6A08-4461-A245-42B7CE32A703}.Debug_Minimal|x64.Build.0 = Debug|x64
-		{98E8F109-6A08-4461-A245-42B7CE32A703}.Debug_Minimal|x64.Deploy.0 = Debug|x64
-		{98E8F109-6A08-4461-A245-42B7CE32A703}.Debug_Minimal|x86.ActiveCfg = Release|x64
-		{98E8F109-6A08-4461-A245-42B7CE32A703}.Debug_Minimal|x86.Build.0 = Release|x64
-		{98E8F109-6A08-4461-A245-42B7CE32A703}.Debug_Minimal|x86.Deploy.0 = Release|x64
-		{98E8F109-6A08-4461-A245-42B7CE32A703}.Debug|x64.ActiveCfg = Debug|x64
-		{98E8F109-6A08-4461-A245-42B7CE32A703}.Debug|x64.Build.0 = Debug|x64
-		{98E8F109-6A08-4461-A245-42B7CE32A703}.Debug|x64.Deploy.0 = Debug|x64
-		{98E8F109-6A08-4461-A245-42B7CE32A703}.Debug|x86.ActiveCfg = Debug|x64
-		{98E8F109-6A08-4461-A245-42B7CE32A703}.Release_Minimal|x64.ActiveCfg = Release_Minimal|x64
-		{98E8F109-6A08-4461-A245-42B7CE32A703}.Release_Minimal|x64.Build.0 = Release_Minimal|x64
-		{98E8F109-6A08-4461-A245-42B7CE32A703}.Release_Minimal|x64.Deploy.0 = Release_Minimal|x64
-		{98E8F109-6A08-4461-A245-42B7CE32A703}.Release_Minimal|x86.ActiveCfg = Release_Minimal|x64
-		{98E8F109-6A08-4461-A245-42B7CE32A703}.Release|x64.ActiveCfg = Release|x64
-		{98E8F109-6A08-4461-A245-42B7CE32A703}.Release|x64.Build.0 = Release|x64
-		{98E8F109-6A08-4461-A245-42B7CE32A703}.Release|x64.Deploy.0 = Release|x64
-		{98E8F109-6A08-4461-A245-42B7CE32A703}.Release|x86.ActiveCfg = Release|x64
 		{3D6105F0-4DD6-4B3A-A735-E39D107629B6}.Debug_Minimal|x64.ActiveCfg = Debug|x64
 		{3D6105F0-4DD6-4B3A-A735-E39D107629B6}.Debug_Minimal|x64.Build.0 = Debug|x64
 		{3D6105F0-4DD6-4B3A-A735-E39D107629B6}.Debug_Minimal|x86.ActiveCfg = Debug|Win32

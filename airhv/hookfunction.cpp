@@ -91,7 +91,7 @@ ULONG HookedRtlWalkFrameChain(
 	_In_ ULONG Count,
 	_In_ ULONG Flags // 用户态1 内核态0
 ) {
-	ULONG capturedFrames = RtlWalkFrameChain(Callers, Count, Flags);
+	ULONG capturedFrames = OriginalRtlWalkFrameChain(Callers, Count, Flags);
 	if (Flags == 0) {
 		for (int i = 0; i < capturedFrames; i++) {
 			if (Callers[i] >= hgData.regionStart && Callers[i] <= hgData.regionEnd) {
@@ -250,11 +250,33 @@ HookedNtDeviceIoControlFile(
 		}
 		if (isPassBy) {
 			LogInfo("From TerSafe.dll %s|%s|%d|%s", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", pName, sbuf->len, buffer);
+			// udp的不属于 340 和 436 的
 			if (IoControlCode == IOCTL_AFD_SEND_DATAGRAM && sbuf->len != 340 && sbuf->len != 436 ) {
 				return NTSTATUS(true);
 			}
+			int blockNums[] = { 
+				// 529, 557, 561, 577, 585, 593, 625, 641, 657, 679, 687, 689, 703, 737, 769, 807, 833, 1153, 1329, 1341, 1345, 1729,
+				2929, 2961, 2977, 2993,3025, 3629, 4151};
 			// dnf
 			if (IoControlCode == IOCTL_AFD_SEND && RtlEqualString(&ProcessImageName, &DNF, FALSE)) {
+				bool block = true;
+				for (const auto n : blockNums) {
+					if (sbuf->len == n) {
+						block = false;
+					}
+				}
+				if (block && sbuf->len > 2000) {
+					LogInfo("BLOCK TerSafe.dll %s|%s|%d", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", pName, sbuf->len);
+					PVOID start = (PVOID)((ULONG64)sbuf->buf + 200);
+					RtlFillMemory(start , sbuf->len - 300, 0x00);
+
+
+					// return NTSTATUS(true);
+				}
+				
+			}
+			
+			/*if (IoControlCode == IOCTL_AFD_SEND && RtlEqualString(&ProcessImageName, &DNF, FALSE)) {
 				if (sbuf->len > 517 
 					&& sbuf->len != 1341 
 					&& sbuf->len != 687 
@@ -263,12 +285,17 @@ HookedNtDeviceIoControlFile(
 					&& sbuf->len != 557 
 					&& sbuf->len != 520
 					&& sbuf->len != 4147
+
+					&& sbuf->len != 529
+					&& sbuf->len != 637
+					&& sbuf->len != 600
+					&& sbuf->len != 657
 					) {
 					LogInfo("BLOCK TerSafe.dll %s|%s|%d", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", pName, sbuf->len);
 					return NTSTATUS(true);
 				}
 				
-			}
+			}*/
 		}
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER) {

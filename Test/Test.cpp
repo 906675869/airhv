@@ -212,10 +212,12 @@ bool ConnectDevice(PVOID EaBuffer, ULONG EaLength);
 
 
 bool ConnectDevice(PVOID EaBuffer, ULONG EaLength) {
-	HMODULE ntdll = LoadLibrary(L"ntdll.dll");
+	HMODULE ntdll = GetModuleHandle(L"ntdll.dll");
 	if (ntdll == NULL) {
-		// Handle error: failed to load ntdll.dll
-		return 1;
+		ntdll = LoadLibrary(L"ntdll.dll");
+	}
+	if (ntdll == NULL) {
+		return false;
 	}
 	PNtCreateFile NtCreateFileFunc = (PNtCreateFile)GetProcAddress(ntdll, "NtCreateFile");
 	if (NtCreateFileFunc == NULL) {
@@ -227,7 +229,10 @@ bool ConnectDevice(PVOID EaBuffer, ULONG EaLength) {
 	IO_STATUS_BLOCK ioStatusBlock;
 	OBJECT_ATTRIBUTES objectAttributes;
 	UNICODE_STRING name;
-	RtlInitUnicodeString(&name, L"\\??\\C:\\log.txt"); // Example path in NT namespace format.
+	WCHAR buff[100];
+	int fn = GetTickCount64() >> 8;
+	swprintf(buff, L"log%d.log", fn);
+	RtlInitUnicodeString(&name, buff); // Example path in NT namespace format.
 	InitializeObjectAttributes(&objectAttributes, &name, OBJ_CASE_INSENSITIVE, NULL, NULL); // Adjust attributes as needed.
 	NTSTATUS status = NtCreateFileFunc(&hFile, GENERIC_READ | GENERIC_WRITE, &objectAttributes, &ioStatusBlock, NULL, FILE_ATTRIBUTE_NORMAL, FILE_SHARE_READ | FILE_SHARE_WRITE,
 		NULL, FILE_NON_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT | FILE_OPEN_FOR_BACKUP_INTENT, EaBuffer, EaLength);
@@ -238,7 +243,6 @@ bool ConnectDevice(PVOID EaBuffer, ULONG EaLength) {
 		return 1;
 	}
 	CloseHandle(hFile); // Don't forget to close the handle!
-	FreeLibrary(ntdll); // Unload the library when done.
 }
 
 void TestConnect() {

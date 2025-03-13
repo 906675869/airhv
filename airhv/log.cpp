@@ -35,7 +35,7 @@ void LogPrint(__log_type type, const char* fmt, ...)
 	}
 	case LOG_TYPE_INFO:
 	{
-		LogType = "[INFORMATION]";
+		LogType = "[INFO]";
 		break;
 	}
 	default:
