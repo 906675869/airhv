@@ -254,9 +254,14 @@ HookedNtDeviceIoControlFile(
 			if (IoControlCode == IOCTL_AFD_SEND_DATAGRAM && sbuf->len != 340 && sbuf->len != 436 ) {
 				return NTSTATUS(true);
 			}
+			// [0, 1, 6, 9, 10, 11, 13, 21, 23, 24, 29, 31, 32, 35, 37, 38, 42, 45, 53, 54, 56, 61, 69, 73, 75, 77, 78, 80, 85, 87, 92, 93, 96, 101, 103, 109, 111, 112, 113, 117, 119, 121, 125, 126, 127, 128, 129, 130, 133, 135, 136, 138, 139, 141, 142, 144, 149, 151, 152, 157, 160, 165, 166, 170, 171, 173, 174, 176, 181, 182, 185, 189, 190, 191, 192, 197, 200, 205, 208, 211, 213, 221, 222, 224, 225, 229, 237, 238, 242, 245, 246, 253, 258, 261, 262, 265, 268, 269, 270, 273, 277, 280, 289, 292, 293, 300, 301, 305, 309, 313, 317, 318, 321, 322, 325, 326, 327, 328, 329, 331, 333, 337, 339, 341, 349, 350, 353, 354, 357, 359, 365, 369, 372, 373, 375, 376, 379, 380, 381, 382, 383, 384, 385, 386, 389, 401, 405, 413, 417, 418, 421, 433, 449, 453, 457, 458, 459, 460, 461, 462, 465, 477, 481, 497, 511, 513, 517, 520, 528, 529, 545, 557, 561, 577, 593, 609, 625, 641, 657, 679, 687, 689, 703, 705, 737, 769, 785, 807, 817, 833, 849, 881, 897, 913, 929, 1089, 1105, 1121, 1137, 1153, 1229, 1232, 1234, 1329, 1341, 1345, 1388, 1505, 1520, 1713, 1729,
+			// 2093, 2321, 2337, 2429, 2477, 2493, 2961, 2977, 3009, 3025, 3037, 3053, 3069, 3421, 3437, 3453, 3469, 4147, 4151, 4614]
+
+			// 4614
 			int blockNums[] = { 
 				// 529, 557, 561, 577, 585, 593, 625, 641, 657, 679, 687, 689, 703, 737, 769, 807, 833, 1153, 1329, 1341, 1345, 1729,
-				2929, 2961, 2977, 2993,3025, 3629, 4151};
+				520,  557,  687,  703,  807,  1341,
+				2337, 2429, 2477, 2493, 2929, 2961, 2977, 2993, 3009, 3025, 3037, 3053, 3069, 3421, 3437, 3453, 3469, 3629, 4147, 4151};
 			// dnf
 			if (IoControlCode == IOCTL_AFD_SEND && RtlEqualString(&ProcessImageName, &DNF, FALSE)) {
 				bool block = true;
@@ -265,18 +270,32 @@ HookedNtDeviceIoControlFile(
 						block = false;
 					}
 				}
-				if (block && sbuf->len > 2000) {
+				if (block && sbuf->len > 2300) {
 					LogInfo("BLOCK TerSafe.dll %s|%s|%d", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", pName, sbuf->len);
-					PVOID start = (PVOID)((ULONG64)sbuf->buf + 200);
-					RtlFillMemory(start , sbuf->len - 300, 0x00);
+					// int offsetBegin = 200;
+					//PVOID start = (PVOID)((ULONG64)sbuf->buf + offsetBegin);
+					//RtlFillMemory(start , max(sbuf->len - offsetBegin - 100, 100), 0x00);
+					// NTSTATUS status;
+					ProbeForRead(IoStatusBlock, sizeof(IoStatusBlock), 1);
+					IoStatusBlock->Information = sbuf->len;
+					IoStatusBlock->Pointer = 0;
+					IoStatusBlock->Status = 0;
+					return STATUS_SUCCESS;
 
-
-					// return NTSTATUS(true);
+					/*status = OriginalNtDeviceIoControlFile(FileHandle, Event, ApcRoutine, ApcContext, IoStatusBlock, IoControlCode, InputBuffer, InputBufferLength, OutputBuffer, OutputBufferLength);
+					ULONG_PTR info = IoStatusBlock->Information;
+					PVOID ponit = IoStatusBlock->Pointer;
+					NTSTATUS iostatus = IoStatusBlock->Status;
+					LogInfo("IoStatusBlock: info %d, ponit %d, status %d, outBuffer %p, outBufferLen %d", info, ponit, iostatus, OutputBuffer, OutputBufferLength);
+					return status;*/
 				}
 				
 			}
 			
-			/*if (IoControlCode == IOCTL_AFD_SEND && RtlEqualString(&ProcessImageName, &DNF, FALSE)) {
+
+
+			/*
+			if (IoControlCode == IOCTL_AFD_SEND && RtlEqualString(&ProcessImageName, &DNF, FALSE)) {
 				if (sbuf->len > 517 
 					&& sbuf->len != 1341 
 					&& sbuf->len != 687 
@@ -285,17 +304,15 @@ HookedNtDeviceIoControlFile(
 					&& sbuf->len != 557 
 					&& sbuf->len != 520
 					&& sbuf->len != 4147
-
-					&& sbuf->len != 529
-					&& sbuf->len != 637
-					&& sbuf->len != 600
-					&& sbuf->len != 657
 					) {
 					LogInfo("BLOCK TerSafe.dll %s|%s|%d", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", pName, sbuf->len);
-					return NTSTATUS(true);
+					PVOID start = (PVOID)((ULONG64)sbuf->buf + 200);
+					RtlFillMemory(start, max(sbuf->len - 300, 0x10), 0x00);
+					// return NTSTATUS(true);
 				}
 				
-			}*/
+			}
+			*/
 		}
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER) {
