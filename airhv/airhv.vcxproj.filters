@@ -219,4 +219,7 @@
       <Filter>asm</Filter>
     </MASM>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="somelogic.md" />
+  </ItemGroup>
 </Project>

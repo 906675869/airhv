@@ -1,5 +1,10 @@
 #pragma once
 
+typedef struct _AddressRegion {
+	PVOID start;
+	PVOID end;
+}AddressRegion,*PAddressRegion;
+
 
 
 
@@ -18,3 +23,7 @@ NTSTATUS FileExists(IN PUNICODE_STRING path);
 NTSTATUS SearchPattern(IN PCUCHAR pattern, IN UCHAR wildcard, IN ULONG_PTR len, IN const VOID* base, IN ULONG_PTR size, OUT PVOID* ppFound);
 
 PVOID GetKernelExportAddr(PCWSTR fName);
+
+NTSTATUS GetTextRegion(PDRIVER_OBJECT DriverObject, PAddressRegion region);
+
+NTSTATUS GetUserCodeRange(HANDLE ProcessId, PAddressRegion region);

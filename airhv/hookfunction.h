@@ -49,6 +49,12 @@ NTSTATUS
 	_In_ ULONG OutputBufferLength
 );
 
+typedef ULONG(*RtlWalkFrameChainType)(
+	_Out_writes_(Count - (Flags >> RTL_STACK_WALKING_MODE_FRAMES_TO_SKIP_SHIFT)) PVOID* Callers,
+	_In_ ULONG Count,
+	_In_ ULONG Flags
+	);
+
 extern OriginalMmCopyVirtualMemoryType OriginalMmCopyVirtualMemory;
 extern OriginalNtCreateFileType OriginalNtCreateFile;
 extern OriginalNtOpenProcessType OriginalNtOpenProcess;
@@ -56,6 +62,7 @@ extern OriginalMmIsAddressValidType OriginalMmIsAddressValid;
 extern OriginalMemmoveType OriginalMemmove;
 extern OriginalProbeForReadType OriginalProbeForRead;
 extern OriginalNtDeviceIoControlFileType OriginalNtDeviceIoControlFile;
+extern RtlWalkFrameChainType OriginalRtlWalkFrameChain;
 
 
 

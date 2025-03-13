@@ -199,6 +199,9 @@
     <MASM Include="asm\vm_intrin.asm" />
     <MASM Include="lde\lde64.asm" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="somelogic.md" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />

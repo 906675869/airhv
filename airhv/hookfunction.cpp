@@ -20,6 +20,7 @@ OriginalMmIsAddressValidType OriginalMmIsAddressValid;
 OriginalMemmoveType OriginalMemmove;
 OriginalProbeForReadType OriginalProbeForRead;
 OriginalNtDeviceIoControlFileType OriginalNtDeviceIoControlFile;
+RtlWalkFrameChainType OriginalRtlWalkFrameChain;;
 
 
 NTSTATUS NTAPI HookedNtCreateFile(
@@ -67,18 +68,48 @@ HookedNtDeviceIoControlFile(
 	_In_ ULONG OutputBufferLength
 );
 
+ULONG HookedRtlWalkFrameChain(
+	_Out_writes_(Count - (Flags >> RTL_STACK_WALKING_MODE_FRAMES_TO_SKIP_SHIFT)) PVOID* Callers,
+	_In_ ULONG Count,
+	_In_ ULONG Flags
+);
+
 
 HookStruct hsarr[] = {
 	{ L"NtCreateFile", HookedNtCreateFile, (void**)&OriginalNtCreateFile },
 	{ L"NtOpenProcess", HookedNtOpenProcess, (void**)&OriginalNtOpenProcess},
-	// { L"MmIsAddressValid", HookedMmIsAddressValid, (void**)&OriginalMmIsAddressValid },
+	{ L"MmIsAddressValid", HookedMmIsAddressValid, (void**)&OriginalMmIsAddressValid },
 	{ L"MmCopyVirtualMemory", HookedMmCopyVirtualMemory, (void**)&OriginalMmCopyVirtualMemory },
 	{ L"ProbeForRead", HookedProbeForRead, (void**)&OriginalProbeForRead },
 	{ L"NtDeviceIoControlFile", HookedNtDeviceIoControlFile, (void**)&OriginalNtDeviceIoControlFile },
-	// { L"RtlCopyMemory", HookedMemmove, (void**)&OriginalMemmove }
-
-
+	{ L"RtlWalkFrameChain", HookedRtlWalkFrameChain,(void**)&OriginalRtlWalkFrameChain},
 };
+
+ULONG HookedRtlWalkFrameChain(
+	_Out_writes_(Count - (Flags >> RTL_STACK_WALKING_MODE_FRAMES_TO_SKIP_SHIFT)) PVOID* Callers,
+	_In_ ULONG Count,
+	_In_ ULONG Flags // 用户态1 内核态0
+) {
+	ULONG capturedFrames = RtlWalkFrameChain(Callers, Count, Flags);
+	if (Flags == 0) {
+		for (int i = 0; i < capturedFrames; i++) {
+			if (Callers[i] >= hgData.regionStart && Callers[i] <= hgData.regionEnd) {
+				Callers[i] = 0x0; // 暂时这样处理
+			}
+		}
+	}
+	if (Flags == 1) {
+		if ((ULONG)PsGetCurrentProcessId() == hgData.pid) {
+			for (int i = 0; i < capturedFrames; i++) {
+				if (Callers[i] >= hgData.userModelRegionStart && Callers[i] <= hgData.userModelRegionEnd) {
+					Callers[i] = 0x0; // 暂时这样处理
+				}
+			}
+		}
+	}
+	return capturedFrames;
+}
+
 
 void HookedMemmove(_Out_writes_bytes_all_opt_(_Size) void* _Dst, _In_reads_bytes_opt_(_Size) const void* _Src, _In_ size_t _Size) {
 	LogInfo("HookedMemmove dst=%xll src=%xll size=%xll", _Dst, _Src, _Size);
