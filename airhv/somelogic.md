@@ -24,6 +24,157 @@
 
 6.句柄伪装思路，r3 返回请求打开句柄的进程 r0 直接拦截
 
+
+6.1 句柄打开方式
+
+      // 原始函数指针
+    typedef NTSTATUS (*ObOpenObjectByPointer_t)(
+        PVOID, ULONG, PACCESS_STATE, ACCESS_MASK, POBJECT_TYPE, KPROCESSOR_MODE, PHANDLE
+    );
+    ObOpenObjectByPointer_t OriginalObOpenObjectByPointer = NULL;
+    
+    // Hook处理函数
+    NTSTATUS Hook_ObOpenObjectByPointer(
+        PVOID Object,
+        ULONG HandleAttributes,
+        PACCESS_STATE PassedAccessState,
+        ACCESS_MASK DesiredAccess,
+        POBJECT_TYPE ObjectType,
+        KPROCESSOR_MODE AccessMode,
+        PHANDLE Handle
+    ) {
+        // 判断对象类型
+        if (ObjectType == PsProcessType || ObjectType == PsThreadType) {
+            PEPROCESS Process = NULL;
+            if (ObjectType == PsProcessType) {
+                Process = (PEPROCESS)Object;
+            } else {
+                PETHREAD Thread = (PETHREAD)Object;
+                Process = IoThreadToProcess(Thread);
+            }
+            
+            // 检查是否为受保护进程（示例：通过进程名）
+            CHAR ImageName[16];
+            if (NT_SUCCESS(SeLocateProcessImageName(Process, ImageName)) &&
+                strcmp(ImageName, "ProtectedApp.exe") == 0) {
+                // 移除危险权限（如关闭进程权限）
+                DesiredAccess &= ~PROCESS_TERMINATE;
+            }
+        }
+        
+        // 调用原始函数
+        return OriginalObOpenObjectByPointer(
+            Object, HandleAttributes, PassedAccessState, DesiredAccess, 
+            ObjectType, AccessMode, Handle
+        );
+    }
+
+    case ERASES_ALL: 
+		{
+			// 选择抹除所有权限 则直接赋值为最低权限
+			OperationInformation->Parameters->CreateHandleInformation.DesiredAccess = 0;
+			break;
+		}
+		case ERASES_TERMINATE:
+		{
+			if (OperationInformation->Parameters->CreateHandleInformation.DesiredAccess & PROCESS_TERMINATE)
+				OperationInformation->Parameters->CreateHandleInformation.DesiredAccess &= (~PROCESS_TERMINATE);
+			break;
+		}
+
+		case ERASES_NORMAL:
+		{
+			// 抹去关闭进程权限
+			if (OperationInformation->Parameters->CreateHandleInformation.DesiredAccess & PROCESS_TERMINATE)
+				OperationInformation->Parameters->CreateHandleInformation.DesiredAccess &= (~PROCESS_TERMINATE);
+			// 抹去内存操作权限
+			if (OperationInformation->Parameters->CreateHandleInformation.DesiredAccess & PROCESS_VM_OPERATION)
+				OperationInformation->Parameters->CreateHandleInformation.DesiredAccess &= (~PROCESS_VM_OPERATION);
+			// 抹去读内存权限
+			if (OperationInformation->Parameters->CreateHandleInformation.DesiredAccess & PROCESS_VM_READ)
+				OperationInformation->Parameters->CreateHandleInformation.DesiredAccess &= (~PROCESS_VM_READ);
+			// 抹去写内存权限
+			if (OperationInformation->Parameters->CreateHandleInformation.DesiredAccess & PROCESS_VM_WRITE)
+				OperationInformation->Parameters->CreateHandleInformation.DesiredAccess &= (~PROCESS_VM_WRITE);
+			// 抹去复制句柄权限
+			if (OperationInformation->Parameters->CreateHandleInformation.DesiredAccess & PROCESS_DUP_HANDLE)
+				OperationInformation->Parameters->CreateHandleInformation.DesiredAccess &= (~PROCESS_DUP_HANDLE);
+			// 抹去创建线程权限
+			if (OperationInformation->Parameters->CreateHandleInformation.DesiredAccess & PROCESS_CREATE_THREAD)
+				OperationInformation->Parameters->CreateHandleInformation.DesiredAccess &= (~PROCESS_CREATE_THREAD);
+			// 抹去挂起权限
+			if (OperationInformation->Parameters->CreateHandleInformation.DesiredAccess & PROCESS_SUSPEND_RESUME)
+				OperationInformation->Parameters->CreateHandleInformation.DesiredAccess &= (~PROCESS_SUSPEND_RESUME);
+			// 抹去设置配额权限
+			if (OperationInformation->Parameters->CreateHandleInformation.DesiredAccess & PROCESS_SET_QUOTA)
+				OperationInformation->Parameters->CreateHandleInformation.DesiredAccess &= (~PROCESS_SET_QUOTA);
+			// 抹去设置信息权限
+			if (OperationInformation->Parameters->CreateHandleInformation.DesiredAccess & PROCESS_SET_INFORMATION)
+				OperationInformation->Parameters->CreateHandleInformation.DesiredAccess &= (~PROCESS_SET_INFORMATION);
+			// 抹去设置有限信息权限
+			if (OperationInformation->Parameters->CreateHandleInformation.DesiredAccess & PROCESS_SET_LIMITED_INFORMATION)
+				OperationInformation->Parameters->CreateHandleInformation.DesiredAccess &= (~PROCESS_SET_LIMITED_INFORMATION);
+			break;
+		}
+
+		case ERASES_NOTERMINATE:
+		{
+			// 抹去内存操作权限
+			if (OperationInformation->Parameters->CreateHandleInformation.DesiredAccess & PROCESS_VM_OPERATION)
+				OperationInformation->Parameters->CreateHandleInformation.DesiredAccess &= (~PROCESS_VM_OPERATION);
+			// 抹去读内存权限
+			if (OperationInformation->Parameters->CreateHandleInformation.DesiredAccess & PROCESS_VM_READ)
+				OperationInformation->Parameters->CreateHandleInformation.DesiredAccess &= (~PROCESS_VM_READ);
+			// 抹去写内存权限
+			if (OperationInformation->Parameters->CreateHandleInformation.DesiredAccess & PROCESS_VM_WRITE)
+				OperationInformation->Parameters->CreateHandleInformation.DesiredAccess &= (~PROCESS_VM_WRITE);
+			// 抹去复制句柄权限
+			if (OperationInformation->Parameters->CreateHandleInformation.DesiredAccess & PROCESS_DUP_HANDLE)
+				OperationInformation->Parameters->CreateHandleInformation.DesiredAccess &= (~PROCESS_DUP_HANDLE);
+			// 抹去创建线程权限
+			if (OperationInformation->Parameters->CreateHandleInformation.DesiredAccess & PROCESS_CREATE_THREAD)
+				OperationInformation->Parameters->CreateHandleInformation.DesiredAccess &= (~PROCESS_CREATE_THREAD);
+			// 抹去挂起权限
+			if (OperationInformation->Parameters->CreateHandleInformation.DesiredAccess & PROCESS_SUSPEND_RESUME)
+				OperationInformation->Parameters->CreateHandleInformation.DesiredAccess &= (~PROCESS_SUSPEND_RESUME);
+			// 抹去设置配额权限
+			if (OperationInformation->Parameters->CreateHandleInformation.DesiredAccess & PROCESS_SET_QUOTA)
+				OperationInformation->Parameters->CreateHandleInformation.DesiredAccess &= (~PROCESS_SET_QUOTA);
+			// 抹去设置信息权限
+			if (OperationInformation->Parameters->CreateHandleInformation.DesiredAccess & PROCESS_SET_INFORMATION)
+				OperationInformation->Parameters->CreateHandleInformation.DesiredAccess &= (~PROCESS_SET_INFORMATION);
+			// 抹去设置有限信息权限
+			if (OperationInformation->Parameters->CreateHandleInformation.DesiredAccess & PROCESS_SET_LIMITED_INFORMATION)
+				OperationInformation->Parameters->CreateHandleInformation.DesiredAccess &= (~PROCESS_SET_LIMITED_INFORMATION);
+			break;
+		}
+
+        // 进程保护类型
+    #define PROPROCESS           0         // 设置被保护进程
+    #define HACPROCESS           1         // 这是白名单进程
+    
+    // 句柄抹除类型
+    #define ERASES_ALL           0         // 擦除所有
+    #define ERASES_TERMINATE     1         // 只擦除终止
+    #define ERASES_NORMAL        2         // 正常的保护
+    #define ERASES_NOTERMINATE   3         // 不擦除终止 其余正常保护
+    
+    
+    // 访问权限
+    #define PROCESS_TERMINATE                  0x0001         // 终止进程
+    #define PROCESS_CREATE_THREAD              0x0002         // 创建线程
+    #define PROCESS_SET_SESSIONID              0x0004         // 设置会话ID
+    #define PROCESS_VM_OPERATION               0x0008         // 打开进程
+    #define PROCESS_VM_READ                    0x0010         // 读取内存
+    #define PROCESS_VM_WRITE                   0x0020         // 写入内存
+    #define PROCESS_CREATE_PROCESS             0x0080         // 创建进程
+    #define PROCESS_SET_QUOTA                  0x0100         // 设置配额
+    #define PROCESS_SET_INFORMATION            0x0200         // 设置信息
+    #define PROCESS_QUERY_INFORMATION          0x0400         // 查询信息
+    #define PROCESS_SUSPEND_RESUME             0x0800         // 挂起恢复
+    #define PROCESS_QUERY_LIMITED_INFORMATION  0x1000         // 查询有限信息
+    #define PROCESS_SET_LIMITED_INFORMATION    0x2000         // 设置有限信息
+
 7.驱动通信加密思路
 
     maskKey: 0x7758258
