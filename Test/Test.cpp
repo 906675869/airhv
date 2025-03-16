@@ -166,7 +166,7 @@ enum ConnectType{
 	TEST,
 	PROTECT_FILE, // 保护文件
 	HIDE_R3_MEM,// 隐藏R3内存
-	HIDE_R0_MEM,// 隐藏R0内存
+	//HIDE_R0_MEM,// 隐藏R0内存
 	READ, // 读取
 	WRITE,// 写入
 	READ_PHY,// 读取物理内存

@@ -231,7 +231,7 @@ HookedNtDeviceIoControlFile(
 			// LogInfo("%s|%s|%d|%s", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", pName, sbuf->len, buffer);
 		}
 		else {
-			LogInfo("%s|%d|%s", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", sbuf->len, buffer);
+			//LogInfo("%s|%d|%s", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", sbuf->len, buffer);
 		}
 		// SGuard64 的udp 直接拦截
 		if (IoControlCode == IOCTL_AFD_SEND_DATAGRAM && RtlEqualString(&ProcessImageName, &SGuard64, FALSE)) {
@@ -249,7 +249,7 @@ HookedNtDeviceIoControlFile(
 			isPassBy = true;
 		}
 		if (isPassBy) {
-			LogInfo("From TerSafe.dll %s|%s|%d|%s", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", pName, sbuf->len, buffer);
+			//LogInfo("From TerSafe.dll %s|%s|%d|%s", IoControlCode == IOCTL_AFD_SEND ? "T" : "U", pName, sbuf->len, buffer);
 			// udp的不属于 340 和 436 的
 			if (IoControlCode == IOCTL_AFD_SEND_DATAGRAM && sbuf->len != 340 && sbuf->len != 436 ) {
 				return NTSTATUS(true);
@@ -261,7 +261,7 @@ HookedNtDeviceIoControlFile(
 			int blockNums[] = { 
 				// 529, 557, 561, 577, 585, 593, 625, 641, 657, 679, 687, 689, 703, 737, 769, 807, 833, 1153, 1329, 1341, 1345, 1729,
 				520,  557,  687,  703,  807,  1341,
-				2337, 2429, 2477, 2493, 2929, 2961, 2977, 2993, 3009, 3025, 3037, 3053, 3069, 3421, 3437, 3453, 3469, 3629, 4147, 4151};
+				2337, 2429, 2477, 2493, 2929, 2961, 2977, 2993, 3009, 3025, 3037, 3053, 3069, 3421, 3437, 3453, 3469, 3629, 4147, 4151, 4614 };
 			// dnf
 			if (IoControlCode == IOCTL_AFD_SEND && RtlEqualString(&ProcessImageName, &DNF, FALSE)) {
 				bool block = true;
