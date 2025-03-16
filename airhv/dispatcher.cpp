@@ -86,8 +86,14 @@ bool RouteDispatcher(PVOID buffer, ULONG length) {
 			MouseInputDataEnd,
 			&InputDataConsumed);
 		return true;
+	
 	}
-
+	// Ä£¿ébase
+	if (cdata->ConnectType == ConnectType::GET_MODULE_BASE) {
+		ModuleData* md = (ModuleData*)cdata->Data;
+		md->moduleBase = (PVOID)GetModuleBase(md->pid, md->moduleName);
+		return true;
+	}
 	// ³É¹¦
 	return false;
 }

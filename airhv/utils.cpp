@@ -369,3 +369,37 @@ NTSTATUS GetUserCodeRange(HANDLE ProcessId, PAddressRegion region) {
     ObDereferenceObject(target_process);
     return STATUS_UNSUCCESSFUL;
 }
+
+
+ULONG_PTR GetModuleBase(ULONG pid, WCHAR* name) {
+    PEPROCESS process;
+    PsLookupProcessByProcessId((HANDLE)pid, &process);
+    UNICODE_STRING routine_name;
+    RtlInitUnicodeString(&routine_name, L"PsGetProcessPeb");
+    PVOID PsGetProcessPebAddr = MmGetSystemRoutineAddress(&routine_name);
+    typedef PVOID(*_PsGetProcessPebType)(_In_ PEPROCESS Process);
+
+    _PsGetProcessPebType _PsGetProcessPeb = (_PsGetProcessPebType)PsGetProcessPebAddr;
+    UNICODE_STRING moduleName;
+    RtlInitUnicodeString(&moduleName,name);
+    __try {
+        if (_PsGetProcessPeb(process))
+        {
+            PPEB64 peb = (PPEB64)_PsGetProcessPeb(process);
+            PLIST_ENTRY head = &peb->Ldr->InLoadOrderModuleList;
+
+            for (PLIST_ENTRY entry = head->Flink; entry != head; entry = entry->Flink) {
+                PLDR_DATA_TABLE_ENTRY module = CONTAINING_RECORD(entry, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
+                if (RtlEqualUnicodeString(&module->BaseDllName, &moduleName, FALSE)) {
+                    LogInfo("Find Module Base %p", (ULONG_PTR)module->DllBase);
+                    return (ULONG_PTR)module->DllBase;
+                }
+            }
+        }
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER) {
+        LogInfo("Module Not Find  [UNKNOWN] %wZ", moduleName);
+    }
+    return 0;
+
+}

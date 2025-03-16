@@ -116,7 +116,8 @@ enum ConnectType {
 	WRITE_PHY,// 写入物理内存
 	ALLOC, // 申请内存
 	KEY,
-	MOUSE
+	MOUSE,
+	GET_MODULE_BASE
 };
 
 struct ConnectData {
@@ -130,6 +131,12 @@ struct MemData {
 	PVOID address;
 	ULONG size;
 	PVOID buff; // 读取的内存|写入的内存
+};
+
+struct ModuleData {
+	ULONG pid;// 目标进程pid
+	WCHAR moduleName[128];
+	PVOID moduleBase;
 };
 
 typedef struct _FILE_PROTECT_DATA {

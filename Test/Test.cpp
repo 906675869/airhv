@@ -172,7 +172,8 @@ enum ConnectType{
 	WRITE_PHY,// 写入物理内存
 	ALLOC, // 申请内存
 	KEY,
-	MOUSE
+	MOUSE,
+	GET_MODULE_BASE
 };
 
 struct ConnectData{
@@ -205,7 +206,11 @@ typedef NTSTATUS(NTAPI* PNtCreateFile)(
 	ULONG EaLength
 	);
 
-
+struct ModuleData {
+	ULONG pid;// 目标进程pid
+	WCHAR moduleName[128];
+	PVOID moduleBase;
+};
 bool ConnectDevice(PVOID EaBuffer, ULONG EaLength);
 
 
@@ -299,25 +304,25 @@ void TestConnect() {
 
 int main()
 {
-	HANDLE handle = CreateFileA("\\\\.\\airhv", GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (handle == INVALID_HANDLE_VALUE) {
-		MessageBoxA(0, "打开设备失败", "错误", 0);
-		return 0;
-	}
-	unsigned char buffer[50] = { 0 };
-	unsigned char buffer2[50] = { 0 };
-	DWORD len;
-	// sprintf((char*)buffer, "hello, driver\r\n");
-	if (DeviceIoControl(handle, IOCTL_TEST, buffer, strlen((char*)buffer), buffer2, 49, &len, NULL)) {
-		printf("len: %d\n", len);
-		for (int i = 0; i < len; i++) {
-			printf("0x%02X ", buffer2[i]);
-		}
-	}
+	//HANDLE handle = CreateFileA("\\\\.\\airhv", GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	//if (handle == INVALID_HANDLE_VALUE) {
+	//	MessageBoxA(0, "打开设备失败", "错误", 0);
+	//	return 0;
+	//}
+	//unsigned char buffer[50] = { 0 };
+	//unsigned char buffer2[50] = { 0 };
+	//DWORD len;
+	//// sprintf((char*)buffer, "hello, driver\r\n");
+	//if (DeviceIoControl(handle, IOCTL_TEST, buffer, strlen((char*)buffer), buffer2, 49, &len, NULL)) {
+	//	printf("len: %d\n", len);
+	//	for (int i = 0; i < len; i++) {
+	//		printf("0x%02X ", buffer2[i]);
+	//	}
+	//}
 	Sleep(3000);
 	TestConnect();
 	getchar();
-	CloseHandle(handle);
+	// CloseHandle(handle);
 
 	
 

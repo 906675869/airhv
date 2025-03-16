@@ -7,7 +7,6 @@
 #include "hypervisor_gateway.h"
 #include "vmm.h"
 #include "hookfunction.h"
-//#include "kmclass.h"
 #include "dispatcher.h"
 #include "kmclass.h"
 #include "utils.h"
@@ -34,9 +33,10 @@ PDRIVER_OBJECT gdriver_object;
 
 	 hv::disable_vmx_operation();
 	 free_vmm_context();
-	 RtlInitUnicodeString(&dos_device_name, L"\\DosDevices\\airhv");
+	/* RtlInitUnicodeString(&dos_device_name, L"\\DosDevices\\airhv");
 	 IoDeleteSymbolicLink(&dos_device_name);
-	 IoDeleteDevice(driver_object->DeviceObject);
+	*/ 
+	//  IoDeleteDevice(driver_object->DeviceObject);
  }
 
  NTSTATUS driver_create_close(_In_ PDEVICE_OBJECT device_object, _In_ PIRP irp)
@@ -72,36 +72,36 @@ PDRIVER_OBJECT gdriver_object;
  //}
 
 
- NTSTATUS driver_ioctl_dispatcher(_In_ PDEVICE_OBJECT device_object, _In_ PIRP irp)
- {
-	 UNREFERENCED_PARAMETER(device_object);
-	 unsigned __int32 bytes_io = 0;
-	 PIO_STACK_LOCATION stack = IoGetCurrentIrpStackLocation(irp);
-	 NTSTATUS status = STATUS_SUCCESS;
+ //NTSTATUS driver_ioctl_dispatcher(_In_ PDEVICE_OBJECT device_object, _In_ PIRP irp)
+ //{
+	// UNREFERENCED_PARAMETER(device_object);
+	// unsigned __int32 bytes_io = 0;
+	// PIO_STACK_LOCATION stack = IoGetCurrentIrpStackLocation(irp);
+	// NTSTATUS status = STATUS_SUCCESS;
 
-	 switch (stack->Parameters.DeviceIoControl.IoControlCode)
-	 {
-		 //
-		 // Used by hypervisor control driver to perform allocations
-		 //
-		 case IOCTL_POOL_MANAGER_ALLOCATE:
-		 {
-			 status = pool_manager::perform_allocation();
-			 break;
-		 }
-		/* case IOCTL_TEST:
-		 {
-			 status = Test();
-			 break;
-		 }*/
-	 }
+	// switch (stack->Parameters.DeviceIoControl.IoControlCode)
+	// {
+	//	 //
+	//	 // Used by hypervisor control driver to perform allocations
+	//	 //
+	//	 case IOCTL_POOL_MANAGER_ALLOCATE:
+	//	 {
+	//		 status = pool_manager::perform_allocation();
+	//		 break;
+	//	 }
+	//	/* case IOCTL_TEST:
+	//	 {
+	//		 status = Test();
+	//		 break;
+	//	 }*/
+	// }
 
-	 irp->IoStatus.Status = status;
-	 irp->IoStatus.Information = bytes_io;
+	// irp->IoStatus.Status = status;
+	// irp->IoStatus.Information = bytes_io;
 
-	 IoCompleteRequest(irp, IO_NO_INCREMENT);
-	 return status;
- }
+	// IoCompleteRequest(irp, IO_NO_INCREMENT);
+	// return status;
+ //}
 
 extern "C"
 NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PCUNICODE_STRING reg) 
@@ -110,11 +110,13 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PCUNICODE_STRING reg)
 
 	NTSTATUS status = STATUS_SUCCESS;
 	PDEVICE_OBJECT device_object = NULL;
-	UNICODE_STRING driver_name, dos_device_name;
+	// UNICODE_STRING driver_name, dos_device_name;
 
-	RtlInitUnicodeString(&driver_name, L"\\Device\\airhv");
-	RtlInitUnicodeString(&dos_device_name, L"\\DosDevices\\airhv");
 	gdriver_object = driver_object;
+
+	/*RtlInitUnicodeString(&driver_name, L"\\Device\\airhv");
+	RtlInitUnicodeString(&dos_device_name, L"\\DosDevices\\airhv");
+	
 	status = IoCreateDevice(driver_object, 0, &driver_name, FILE_DEVICE_UNKNOWN, FILE_DEVICE_SECURE_OPEN, FALSE, &device_object);
 
 	if (status == STATUS_SUCCESS)
@@ -126,7 +128,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PCUNICODE_STRING reg)
 		driver_object->DriverUnload = driver_unload;
 		driver_object->Flags |= DO_BUFFERED_IO;
 		IoCreateSymbolicLink(&dos_device_name, &driver_name);
-	}
+	}*/
 
 	//
 	// Check if our cpu support virtualization
