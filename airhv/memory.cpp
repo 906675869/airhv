@@ -14,14 +14,11 @@ OriginalMmCopyVirtualMemoryType GetMmCopyVirtualMemoryType() {
 }
 
 NTSTATUS ReadMem(MemData* mData) {
-    LogInfo("ReadMem Invoke PID: %d ,souceAddr: %p, targetAddr:%p, size:%d", mData->pid, mData->address, mData->buff, mData->size);
     PEPROCESS SourceProcess;
     NTSTATUS status = PsLookupProcessByProcessId((HANDLE)mData->pid, &SourceProcess);
     if (!NT_SUCCESS(status)) {
-        LogInfo("ReadMem PsLookupProcessByProcessId Fail, PID: %d", mData->pid);
         return status;
     }
-    LogInfo("ReadMem PID: %d ,souceAddr: %p, targetAddr:%p, size:%d", mData->pid, mData->address,mData->buff, mData->size);
     SIZE_T bytesCopied = 0;
     OriginalMmCopyVirtualMemoryType _CopyMemory = GetMmCopyVirtualMemoryType();
     status = _CopyMemory(

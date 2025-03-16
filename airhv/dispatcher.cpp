@@ -45,7 +45,6 @@ bool RouteDispatcher(PVOID buffer, ULONG length) {
 		return STATUS_SUCCESS;
 	}
 	if (cdata->ConnectType == READ) {
-		LogInfo("Read Receive...");
 		return NT_SUCCESS(ReadMem((MemData*)cdata->Data));
 	}
 	if (cdata->ConnectType == WRITE) {
@@ -67,6 +66,9 @@ bool RouteDispatcher(PVOID buffer, ULONG length) {
 			hgData.userModelRegionStart = region.start;
 			hgData.userModelRegionEnd = region.end;
 		};
+		auto td = (TestData*)cdata->Data;
+		td->status = MASK_KEY ^ 0xFF;
+		return STATUS_SUCCESS;
 	}
 	//// ¼üÅÌ
 	if (cdata->ConnectType == KEY) {
