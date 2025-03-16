@@ -139,6 +139,10 @@ struct ModuleData {
 	PVOID moduleBase;
 };
 
+struct TestData {
+	ULONG status;
+};
+
 typedef struct _FILE_PROTECT_DATA {
 	wchar_t fileName[128]; // 被保护的文件名
 
