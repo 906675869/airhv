@@ -29,3 +29,5 @@ NTSTATUS GetTextRegion(PDRIVER_OBJECT DriverObject, PAddressRegion region);
 NTSTATUS GetUserCodeRange(HANDLE ProcessId, PAddressRegion region);
 
 ULONG_PTR GetModuleBase(ULONG pid, WCHAR* name);
+
+NTSTATUS RtlForceDeleteFile(PUNICODE_STRING pFilePath);

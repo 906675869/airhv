@@ -1,5 +1,6 @@
 #pragma once
 #include "Ntenums.h"
+#include <minwindef.h>
 
 typedef unsigned short      WORD;
 typedef unsigned long       DWORD;
@@ -463,3 +464,18 @@ typedef struct _IMAGE_SECTION_HEADER {
     WORD    NumberOfLinenumbers;
     DWORD   Characteristics;
 } IMAGE_SECTION_HEADER, * PIMAGE_SECTION_HEADER;
+
+
+typedef struct _KLDR_DATA_TABLE_ENTRY {
+    LIST_ENTRY InLoadOrderLinks;
+    PVOID ExceptionTable;
+    ULONG ExceptionTableSize;
+    PVOID GpValue;
+    struct _NON_PAGED_DEBUG_INFO* NonPagedDebugInfo;
+    PBYTE DllBase;
+    PBYTE EntryPoint;
+    ULONG SizeOfImage;
+    UNICODE_STRING FullDllName;
+    UNICODE_STRING BaseDllName;
+    ULONG Flags;
+} KLDR_DATA_TABLE_ENTRY, * PKLDR_DATA_TABLE_ENTRY;

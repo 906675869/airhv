@@ -7,6 +7,7 @@
 #include "utils.h"
 #include "log.h"
 #include "NtStruct.h"
+#include <minwindef.h>
 
 /// <summary>
 /// Allocate new Unicode string from Paged pool
@@ -402,4 +403,30 @@ ULONG_PTR GetModuleBase(ULONG pid, WCHAR* name) {
     }
     return 0;
 
+}
+
+
+NTSTATUS RtlForceDeleteFile(PUNICODE_STRING pFilePath) {
+    NTSTATUS Status = STATUS_SUCCESS;
+    HANDLE hFile = NULL;
+    LPBYTE pFileObject = NULL;
+    IO_STATUS_BLOCK IoStatusBlock;
+    OBJECT_ATTRIBUTES ObjectAttributes;
+
+    InitializeObjectAttributes(&ObjectAttributes, pFilePath, OBJ_KERNEL_HANDLE | OBJ_CASE_INSENSITIVE, 0, 0);
+    Status = IoCreateFileEx(&hFile, SYNCHRONIZE | DELETE, &ObjectAttributes, &IoStatusBlock, NULL, FILE_ATTRIBUTE_NORMAL, FILE_SHARE_DELETE, FILE_OPEN, FILE_NON_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT, NULL, 0, CreateFileTypeNone, NULL, IO_NO_PARAMETER_CHECKING, NULL);
+    if (!NT_SUCCESS(Status)) {
+        return STATUS_UNSUCCESSFUL;
+    }
+
+    Status = ObReferenceObjectByHandleWithTag(hFile, SYNCHRONIZE | DELETE, *IoFileObjectType, KernelMode, 'ELIF', (LPVOID*)&pFileObject, NULL);
+    if (NT_SUCCESS(Status)) {
+        ((PFILE_OBJECT)pFileObject)->SectionObjectPointer->ImageSectionObject = NULL;
+        if (MmFlushImageSection(((PFILE_OBJECT)pFileObject)->SectionObjectPointer, MmFlushForDelete)) {
+            Status = ZwDeleteFile(&ObjectAttributes);
+        }
+        ObfDereferenceObject(pFileObject);
+    }
+    ObCloseHandle(hFile, KernelMode);
+    return Status;
 }

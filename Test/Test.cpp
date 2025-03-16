@@ -1,6 +1,7 @@
 ﻿// Test.cpp : 此文件包含 "main" 函数。程序执行将在此处开始并结束。
 //
 
+#define _CRT_NON_CONFORMING_SWPRINTFS 1
 #include<Windows.h>
 #include <winternl.h>
 #include <iostream>
@@ -215,7 +216,6 @@ bool ConnectDevice(PVOID EaBuffer, ULONG EaLength);
 
 
 
-
 bool ConnectDevice(PVOID EaBuffer, ULONG EaLength) {
 	HMODULE ntdll = GetModuleHandle(L"ntdll.dll");
 	if (ntdll == NULL) {
@@ -236,7 +236,7 @@ bool ConnectDevice(PVOID EaBuffer, ULONG EaLength) {
 	UNICODE_STRING name;
 	WCHAR buff[100];
 	int fn = GetTickCount64() >> 8;
-	swprintf(buff, L"log%d.log", fn);
+	swprintf_s(buff, L"log%d.log", fn);
 	RtlInitUnicodeString(&name, buff); // Example path in NT namespace format.
 	InitializeObjectAttributes(&objectAttributes, &name, OBJ_CASE_INSENSITIVE, NULL, NULL); // Adjust attributes as needed.
 	NTSTATUS status = NtCreateFileFunc(&hFile, GENERIC_READ | GENERIC_WRITE, &objectAttributes, &ioStatusBlock, NULL, FILE_ATTRIBUTE_NORMAL, FILE_SHARE_READ | FILE_SHARE_WRITE,

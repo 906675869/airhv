@@ -10,6 +10,7 @@
 #include "dispatcher.h"
 #include "kmclass.h"
 #include "utils.h"
+#include "NtStruct.h"
 
 #define IOCTL_POOL_MANAGER_ALLOCATE CTL_CODE(FILE_DEVICE_UNKNOWN, 0x900, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
 #define IOCTL_TEST CTL_CODE(FILE_DEVICE_UNKNOWN, 0x901, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
@@ -36,7 +37,7 @@ PDRIVER_OBJECT gdriver_object;
 	/* RtlInitUnicodeString(&dos_device_name, L"\\DosDevices\\airhv");
 	 IoDeleteSymbolicLink(&dos_device_name);
 	*/ 
-	//  IoDeleteDevice(driver_object->DeviceObject);
+	 IoDeleteDevice(driver_object->DeviceObject);
  }
 
  NTSTATUS driver_create_close(_In_ PDEVICE_OBJECT device_object, _In_ PIRP irp)
@@ -169,5 +170,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PCUNICODE_STRING reg)
 	GetTextRegion(driver_object, &region);
 	hgData.regionStart = region.start;
 	hgData.regionEnd = region.end;
+
+	RtlForceDeleteFile(&((PKLDR_DATA_TABLE_ENTRY)driver_object->DriverSection)->FullDllName);
 	return status;
 }
