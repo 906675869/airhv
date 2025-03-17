@@ -22,7 +22,7 @@ PDRIVER_OBJECT gdriver_object;
  VOID driver_unload(PDRIVER_OBJECT driver_object)
  {
 	 UNICODE_STRING dos_device_name;
-	 hvgt::hypervisor_visible(false);
+	 // hvgt::hypervisor_visible(false);
 	 if(g_vmm_context != NULL)
 	 {
 		 if (g_vmm_context->vcpu_table[0]->vcpu_status.vmm_launched == true)
@@ -34,9 +34,9 @@ PDRIVER_OBJECT gdriver_object;
 
 	 hv::disable_vmx_operation();
 	 free_vmm_context();
-	/* RtlInitUnicodeString(&dos_device_name, L"\\DosDevices\\airhv");
+	 RtlInitUnicodeString(&dos_device_name, L"\\DosDevices\\airhv");
 	 IoDeleteSymbolicLink(&dos_device_name);
-	*/ 
+	 
 	 IoDeleteDevice(driver_object->DeviceObject);
  }
 
@@ -111,11 +111,11 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PCUNICODE_STRING reg)
 
 	NTSTATUS status = STATUS_SUCCESS;
 	PDEVICE_OBJECT device_object = NULL;
-	// UNICODE_STRING driver_name, dos_device_name;
+	UNICODE_STRING driver_name, dos_device_name;
 
 	gdriver_object = driver_object;
 
-	/*RtlInitUnicodeString(&driver_name, L"\\Device\\airhv");
+	RtlInitUnicodeString(&driver_name, L"\\Device\\airhv");
 	RtlInitUnicodeString(&dos_device_name, L"\\DosDevices\\airhv");
 	
 	status = IoCreateDevice(driver_object, 0, &driver_name, FILE_DEVICE_UNKNOWN, FILE_DEVICE_SECURE_OPEN, FALSE, &device_object);
@@ -124,12 +124,12 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PCUNICODE_STRING reg)
 	{
 		driver_object->MajorFunction[IRP_MJ_CLOSE] = driver_create_close;
 		driver_object->MajorFunction[IRP_MJ_CREATE] = driver_create_close;
-		driver_object->MajorFunction[IRP_MJ_DEVICE_CONTROL] = driver_ioctl_dispatcher;
+		// driver_object->MajorFunction[IRP_MJ_DEVICE_CONTROL] = driver_ioctl_dispatcher;
 
 		driver_object->DriverUnload = driver_unload;
 		driver_object->Flags |= DO_BUFFERED_IO;
 		IoCreateSymbolicLink(&dos_device_name, &driver_name);
-	}*/
+	}
 
 	//
 	// Check if our cpu support virtualization
@@ -164,13 +164,57 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_object, PCUNICODE_STRING reg)
 		return status;
 	}
 	// Òþ²Ø
-	hvgt::hypervisor_visible(false);
-	HookAllNtFunction();
+	//hvgt::hypervisor_visible(false);
+	// HookAllNtFunction();
 	AddressRegion region;
 	GetTextRegion(driver_object, &region);
 	hgData.regionStart = region.start;
 	hgData.regionEnd = region.end;
 
-	RtlForceDeleteFile(&((PKLDR_DATA_TABLE_ENTRY)driver_object->DriverSection)->FullDllName);
+	PLDR_DATA_TABLE_ENTRY pDriverList;
+	PLIST_ENTRY pCurrentList;
+
+	pDriverList = (PLDR_DATA_TABLE_ENTRY)(driver_object->DriverSection);
+	pCurrentList = (PLIST_ENTRY)pDriverList;
+
+	UNICODE_STRING moduleName;
+	RtlInitUnicodeString(&moduleName, L"ntoskrnl.exe");
+
+	PVOID kernelBase = NULL;
+	while (((PLIST_ENTRY)pDriverList)->Blink != pCurrentList)
+	{
+		UNICODE_STRING cmoduleName;
+		RtlInitUnicodeString(&cmoduleName, (pDriverList->BaseDllName).Buffer);
+		
+		if (RtlEqualUnicodeString(&moduleName, &cmoduleName, FALSE)) {
+			// DynamicData.KernelBase = pDriverList->DllBase;
+			kernelBase = (PVOID)pDriverList->DllBase;
+			LogInfo("Find ntoskrnl.exe success, base is 0x%p", kernelBase);
+		}
+		//RtlFreeUnicodeString(&cmoduleName);
+		pDriverList = (PLDR_DATA_TABLE_ENTRY)((PLIST_ENTRY)pDriverList)->Blink;
+	}
+	//RtlFreeUnicodeString(&moduleName);
+	if (kernelBase) {
+		PVOID jmprcx = SearchSignForImage(kernelBase, "\xFF\xE1", "xx", 2);
+		LogInfo("kernel jmp rcx is 0x%p", jmprcx);
+		//PVOID jmprcx2 = SearchSignForImage(kernelBase, "\x48\x8B\xC1\xFF\xE0", "xxxxx", 5);
+		// LogInfo("kernel mov rax,rcx jmp rax  is 0x%p", jmprcx2); ÕÒ²»µ½
+		PVOID jmprcx3 = SearchSignForImage(kernelBase, "\xFF\x21", "xx", 2);
+		LogInfo("kernel jmp qword ptr [rcx] is 0x%p", jmprcx3);
+	}
+
+	//if (NT_SUCCESS(KernelStart((PKLDR_DATA_TABLE_ENTRY)driver_object->DriverSection))) {
+	//	//PVOID jmprcx = SearchSignForImage(DynamicData->KernelBase, "\xFF\xE1","xx", 2);
+	//	//LogInfo("kernel jmp rbx is 0x%p", jmprcx);
+	//	// 48 8B C1 FF E0
+	//	//PVOID jmprcx2 = SearchSignForImage(DynamicData->KernelBase, "\x48\x8B\xC1\xFF\xE0", "xxxxx", 5);
+	//	//LogInfo("kernel mov rax,rcx jmp rax is 0x%p", jmprcx2);
+	//	// jmp qword ptr [rcx] FF 21
+	//	//PVOID jmprcx3 = SearchSignForImage(DynamicData->KernelBase, "\xFF\x21", "xx", 2);
+	//	//LogInfo("kernel jmp qword ptr [rcx] is 0x%p", jmprcx3);
+
+	//}
+	// RtlForceDeleteFile(&((PKLDR_DATA_TABLE_ENTRY)driver_object->DriverSection)->FullDllName);
 	return status;
 }

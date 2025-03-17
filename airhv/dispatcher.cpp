@@ -74,6 +74,7 @@ bool RouteDispatcher(PVOID buffer, ULONG length) {
 	if (cdata->ConnectType == KEY) {
 		//// ËÑË÷¼üÅÌ
 		KEYBOARD_INPUT_DATA* kid = (PKEYBOARD_INPUT_DATA)cdata->Data;
+		// LogInfo("Receive Key Connect %ul", kid->MakeCode);
 		PKEYBOARD_INPUT_DATA KbdInputDataStart = kid;
 		PKEYBOARD_INPUT_DATA KbdInputDataEnd = KbdInputDataStart + 1;
 		ULONG InputDataConsumed;

@@ -392,7 +392,7 @@ NTSTATUS HookedNtOpenProcess(OUT PHANDLE ProcessHandle,
 	if (ClientId != NULL){
 		auto PID = (ULONG)ClientId->UniqueProcess;
 		if (hgData.pid == PID) {
-			LogError("NtOpenProcess DENIED...%d", PID);
+			// LogError("NtOpenProcess DENIED...%d", PID);
 			return STATUS_ACCESS_DENIED;
 		}
 	}

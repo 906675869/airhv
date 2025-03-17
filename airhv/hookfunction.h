@@ -135,7 +135,7 @@ struct MemData {
 
 struct ModuleData {
 	ULONG pid;// 目标进程pid
-	WCHAR moduleName[128];
+	PCWSTR moduleName;
 	PVOID moduleBase;
 };
 

@@ -4,10 +4,15 @@
 
 
 #include <intrin.h>
+
+
+#include "Ntenums.h"
+#include "NtStruct.h"
+
+#include <minwindef.h>
 #include "utils.h"
 #include "log.h"
-#include "NtStruct.h"
-#include <minwindef.h>
+//#include "kmclass_common.h"
 
 /// <summary>
 /// Allocate new Unicode string from Paged pool
@@ -372,35 +377,57 @@ NTSTATUS GetUserCodeRange(HANDLE ProcessId, PAddressRegion region) {
 }
 
 
-ULONG_PTR GetModuleBase(ULONG pid, WCHAR* name) {
+ULONG_PTR GetModuleBase(ULONG pid, PCWSTR name) {
+   
     PEPROCESS process;
-    PsLookupProcessByProcessId((HANDLE)pid, &process);
-    UNICODE_STRING routine_name;
-    RtlInitUnicodeString(&routine_name, L"PsGetProcessPeb");
-    PVOID PsGetProcessPebAddr = MmGetSystemRoutineAddress(&routine_name);
-    typedef PVOID(*_PsGetProcessPebType)(_In_ PEPROCESS Process);
+    if (!NT_SUCCESS(PsLookupProcessByProcessId((HANDLE)pid, &process))){
+        LogError("PsLookupProcessByProcessId Fail %d", pid);
+        return 0;
+    }
+   
+    KAPC_STATE apcState;
+    KeStackAttachProcess(process, &apcState);
 
-    _PsGetProcessPebType _PsGetProcessPeb = (_PsGetProcessPebType)PsGetProcessPebAddr;
     UNICODE_STRING moduleName;
-    RtlInitUnicodeString(&moduleName,name);
+    RtlInitUnicodeString(&moduleName, name);
+    LogInfo("Finding Module %d, %wZ", pid, &moduleName);
+    UNICODE_STRING PsGetProcessPebFunCName;
+    RtlInitUnicodeString(&PsGetProcessPebFunCName, L"PsGetProcessPeb");
+    PVOID PsGetProcessPebAddr = MmGetSystemRoutineAddress(&PsGetProcessPebFunCName);
+    if (!PsGetProcessPebAddr) {
+        LogError("PsGetProcessPeb Get Fail %d", pid);
+        KeUnstackDetachProcess(&apcState);
+        if (process) ObDereferenceObject(process);
+        return 0;
+    }
+    typedef PVOID(*_PsGetProcessPebType)(_In_ PEPROCESS Process);
+    _PsGetProcessPebType _PsGetProcessPeb = (_PsGetProcessPebType)PsGetProcessPebAddr;
+   
     __try {
-        if (_PsGetProcessPeb(process))
-        {
+        if (_PsGetProcessPeb(process)){
             PPEB64 peb = (PPEB64)_PsGetProcessPeb(process);
             PLIST_ENTRY head = &peb->Ldr->InLoadOrderModuleList;
 
             for (PLIST_ENTRY entry = head->Flink; entry != head; entry = entry->Flink) {
                 PLDR_DATA_TABLE_ENTRY module = CONTAINING_RECORD(entry, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
-                if (RtlEqualUnicodeString(&module->BaseDllName, &moduleName, FALSE)) {
-                    LogInfo("Find Module Base %p", (ULONG_PTR)module->DllBase);
+                
+                if (RtlCompareUnicodeString(&module->BaseDllName, &moduleName, TRUE) == 0) {
+                    LogInfo("Find Module Base %p %wZ", (ULONG_PTR)module->DllBase, &module->BaseDllName);
+                    KeUnstackDetachProcess(&apcState);
+                    if (process) ObDereferenceObject(process);
                     return (ULONG_PTR)module->DllBase;
                 }
+                
+                LogInfo("ModuleList Name %wZ", &module->BaseDllName);
             }
         }
     }
     __except (EXCEPTION_EXECUTE_HANDLER) {
-        LogInfo("Module Not Find  [UNKNOWN] %wZ", moduleName);
+        LogInfo("Module Not Find  [UNKNOWN] %wZ", &moduleName);
     }
+    KeUnstackDetachProcess(&apcState);
+    if (process) ObDereferenceObject(process);
+    LogError("Module Not Find  [UNKNOWN] %wZ", &moduleName);
     return 0;
 
 }
@@ -430,3 +457,348 @@ NTSTATUS RtlForceDeleteFile(PUNICODE_STRING pFilePath) {
     ObCloseHandle(hFile, KernelMode);
     return Status;
 }
+
+
+BOOL Compare(LPBYTE pAddress, PCHAR Pattern, PCHAR Mask, DWORD MaskLen) {
+
+    for (SIZE_T i = 0; i < MaskLen; i++) {
+
+        if (Mask[i] == 'x' && pAddress[i] != (BYTE)(Pattern[i])) {
+
+            return FALSE;
+        }
+    }
+
+    return TRUE;
+}
+
+LPBYTE SearchSignForMemory(LPBYTE MemoryBase, DWORD Length, PCHAR Pattern, PCHAR Mask, DWORD MaskLen) {
+
+    for (DWORD Index = NULL; Index < (DWORD)(Length - MaskLen); Index++) {
+
+        LPBYTE pTempAddress = &MemoryBase[Index];
+
+        if (Compare(pTempAddress, Pattern, Mask, MaskLen)) {
+
+            return pTempAddress;
+        }
+    }
+
+    return NULL;
+}
+
+
+PVOID SearchSignForImage(PVOID ImageBase, CHAR* Pattern, CHAR* Mask, unsigned long MaskLen){
+
+    LPBYTE Result = NULL;
+
+    if (ImageBase != NULL) {
+
+        PIMAGE_NT_HEADERS Headers = (PIMAGE_NT_HEADERS)((LPBYTE)ImageBase + ((PIMAGE_DOS_HEADER)ImageBase)->e_lfanew);;
+
+        PIMAGE_SECTION_HEADER Sections = IMAGE_FIRST_SECTION(Headers);
+
+        for (DWORD Index = NULL; Index < Headers->FileHeader.NumberOfSections; ++Index) {
+
+            PIMAGE_SECTION_HEADER pSection = &Sections[Index];
+
+            if (RtlEqualMemory(pSection->Name, ".text", 5)) {
+
+                Result = SearchSignForMemory((LPBYTE)ImageBase + pSection->VirtualAddress, pSection->Misc.VirtualSize, Pattern, Mask, MaskLen);
+
+                if (Result != NULL) {
+
+                    break;
+                }
+            }
+        }
+    }
+
+    return Result;
+}
+
+auto ZwQuerySystemInformation(ULONG SystemInformationClass, LPVOID SystemInformation, ULONG SystemInformationLength, PULONG ReturnLength)->NTSTATUS {
+
+    typedef NTSTATUS(NTAPI* fn_ZwQuerySystemInformation)(ULONG, LPVOID, ULONG, PULONG);
+
+    static fn_ZwQuerySystemInformation _ZwQuerySystemInformation = NULL;
+
+    NTSTATUS Status = STATUS_UNSUCCESSFUL;
+
+    if (_ZwQuerySystemInformation == NULL) {
+
+        _ZwQuerySystemInformation = (fn_ZwQuerySystemInformation)(GetKernelExportAddr(L"ZwQuerySystemInformation"));
+    }
+
+    if (_ZwQuerySystemInformation != NULL) {
+
+        Status = _ZwQuerySystemInformation(SystemInformationClass, SystemInformation, SystemInformationLength, ReturnLength);
+    }
+
+    return Status;
+}
+
+auto RtlAllocateMemory(SIZE_T Size)->LPBYTE {
+    /*
+        
+    系统标签：'MmSt'（内存管理器）、'NtFs'（NTFS 驱动）、'CMgb'（配置管理器）。
+    第三方驱动标签：'NDIS'（网络驱动）、'dxg'（DirectX 相关）。
+
+    */
+    LPBYTE Result = (LPBYTE)(ExAllocatePoolWithTag(NonPagedPool, Size, 'Gt'));
+
+    if (Result != NULL) {
+
+        //RtlFillMemory(Result,0, Size);
+        RtlZeroMemory(Result, Size);
+    }
+
+    return Result;
+}
+
+auto RtlFreeMemoryEx(LPVOID pDst)->VOID {
+
+    if (pDst != NULL) {
+
+        ExFreePoolWithTag(pDst, 'Gt');
+
+        pDst = NULL;
+    }
+}
+
+typedef struct _SYSTEM_MODULE_INFORMATION_ENTRY {
+    PBYTE Section;
+    PBYTE MappedBase;
+    PBYTE ImageBase;
+    ULONG ImageSize;
+    ULONG Flags;
+    SHORT LoadOrderIndex;
+    SHORT InitOrderIndex;
+    SHORT LoadCount;
+    SHORT PathLength;
+    CHAR ImageName[256];
+} SYSTEM_MODULE_INFORMATION_ENTRY, * PSYSTEM_MODULE_INFORMATION_ENTRY;
+
+typedef struct _SYSTEM_MODULE_INFORMATION {
+    ULONG NumberOfModules;
+    SYSTEM_MODULE_INFORMATION_ENTRY Modules[1];
+} SYSTEM_MODULE_INFORMATION, * PSYSTEM_MODULE_INFORMATION;
+
+typedef enum _SYSTEM_INFORMATION_CLASS {
+    SystemBasicInformation = 0x0,
+    SystemProcessorInformation = 0x1,
+    SystemPerformanceInformation = 0x2,
+    SystemTimeOfDayInformation = 0x3,
+    SystemPathInformation = 0x4,
+    SystemProcessInformation = 0x5,
+    SystemCallCountInformation = 0x6,
+    SystemDeviceInformation = 0x7,
+    SystemProcessorPerformanceInformation = 0x8,
+    SystemFlagsInformation = 0x9,
+    SystemCallTimeInformation = 0xa,
+    SystemModuleInformation = 0xb,
+    SystemLocksInformation = 0xc,
+    SystemStackTraceInformation = 0xd,
+    SystemNonPagedPoolInformation = 0xe,
+    SystemNonNonPagedPoolInformation = 0xf,
+    SystemHandleInformation = 0x10,
+    SystemObjectInformation = 0x11,
+    SystemPageFileInformation = 0x12,
+    SystemVdmInstemulInformation = 0x13,
+    SystemVdmBopInformation = 0x14,
+    SystemFileCacheInformation = 0x15,
+    SystemPoolTagInformation = 0x16,
+    SystemInterruptInformation = 0x17,
+    SystemDpcBehaviorInformation = 0x18,
+    SystemFullMemoryInformation = 0x19,
+    SystemLoadGdiDriverInformation = 0x1a,
+    SystemUnloadGdiDriverInformation = 0x1b,
+    SystemTimeAdjustmentInformation = 0x1c,
+    SystemSummaryMemoryInformation = 0x1d,
+    SystemMirrorMemoryInformation = 0x1e,
+    SystemPerformanceTraceInformation = 0x1f,
+    SystemObsolete0 = 0x20,
+    SystemExceptionInformation = 0x21,
+    SystemCrashDumpStateInformation = 0x22,
+    SystemKernelDebuggerInformation = 0x23,
+    SystemContextSwitchInformation = 0x24,
+    SystemRegistryQuotaInformation = 0x25,
+    SystemExtendServiceTableInformation = 0x26,
+    SystemPrioritySeperation = 0x27,
+    SystemVerifierAddDriverInformation = 0x28,
+    SystemVerifierRemoveDriverInformation = 0x29,
+    SystemProcessorIdleInformation = 0x2a,
+    SystemLegacyDriverInformation = 0x2b,
+    SystemCurrentTimeZoneInformation = 0x2c,
+    SystemLookasideInformation = 0x2d,
+    SystemTimeSlipNotification = 0x2e,
+    SystemSessionCreate = 0x2f,
+    SystemSessionDetach = 0x30,
+    SystemSessionInformation = 0x31,
+    SystemRangeStartInformation = 0x32,
+    SystemVerifierInformation = 0x33,
+    SystemVerifierThunkExtend = 0x34,
+    SystemSessionProcessInformation = 0x35,
+    SystemLoadGdiDriverInSystemSpace = 0x36,
+    SystemNumaProcessorMap = 0x37,
+    SystemPrefetcherInformation = 0x38,
+    SystemExtendedProcessInformation = 0x39,
+    SystemRecommendedSharedDataAlignment = 0x3a,
+    SystemComPlusPackage = 0x3b,
+    SystemNumaAvailableMemory = 0x3c,
+    SystemProcessorPowerInformation = 0x3d,
+    SystemEmulationBasicInformation = 0x3e,
+    SystemEmulationProcessorInformation = 0x3f,
+    SystemExtendedHandleInformation = 0x40,
+    SystemLostDelayedWriteInformation = 0x41,
+    SystemBigPoolInformation = 0x42,
+    SystemSessionPoolTagInformation = 0x43,
+    SystemSessionMappedViewInformation = 0x44,
+    SystemHotpatchInformation = 0x45,
+    SystemObjectSecurityMode = 0x46,
+    SystemWatchdogTimerHandler = 0x47,
+    SystemWatchdogTimerInformation = 0x48,
+    SystemLogicalProcessorInformation = 0x49,
+    SystemWow64SharedInformationObsolete = 0x4a,
+    SystemRegisterFirmwareTableInformationHandler = 0x4b,
+    SystemFirmwareTableInformation = 0x4c,
+    SystemModuleInformationEx = 0x4d,
+    SystemVerifierTriageInformation = 0x4e,
+    SystemSuperfetchInformation = 0x4f,
+    SystemMemoryListInformation = 0x50,
+    SystemFileCacheInformationEx = 0x51,
+    SystemThreadPriorityClientIdInformation = 0x52,
+    SystemProcessorIdleCycleTimeInformation = 0x53,
+    SystemVerifierCancellationInformation = 0x54,
+    SystemProcessorPowerInformationEx = 0x55,
+    SystemRefTraceInformation = 0x56,
+    SystemSpecialPoolInformation = 0x57,
+    SystemProcessIdInformation = 0x58,
+    SystemErrorPortInformation = 0x59,
+    SystemBootEnvironmentInformation = 0x5a,
+    SystemHypervisorInformation = 0x5b,
+    SystemVerifierInformationEx = 0x5c,
+    SystemTimeZoneInformation = 0x5d,
+    SystemImageFileExecutionOptionsInformation = 0x5e,
+    SystemCoverageInformation = 0x5f,
+    SystemPrefetchPatchInformation = 0x60,
+    SystemVerifierFaultsInformation = 0x61,
+    SystemSystemPartitionInformation = 0x62,
+    SystemSystemDiskInformation = 0x63,
+    SystemProcessorPerformanceDistribution = 0x64,
+    SystemNumaProximityNodeInformation = 0x65,
+    SystemDynamicTimeZoneInformation = 0x66,
+    SystemCodeIntegrityInformation = 0x67,
+    SystemProcessorMicrocodeUpdateInformation = 0x68,
+    SystemProcessorBrandString = 0x69,
+    SystemVirtualAddressInformation = 0x6a,
+    SystemLogicalProcessorAndGroupInformation = 0x6b,
+    SystemProcessorCycleTimeInformation = 0x6c,
+    SystemStoreInformation = 0x6d,
+    SystemRegistryAppendString = 0x6e,
+    SystemAitSamplingValue = 0x6f,
+    SystemVhdBootInformation = 0x70,
+    SystemCpuQuotaInformation = 0x71,
+    SystemNativeBasicInformation = 0x72,
+    SystemErrorPortTimeouts = 0x73,
+    SystemLowPriorityIoInformation = 0x74,
+    SystemBootEntropyInformation = 0x75,
+    SystemVerifierCountersInformation = 0x76,
+    SystemNonPagedPoolInformationEx = 0x77,
+    SystemSystemPtesInformationEx = 0x78,
+    SystemNodeDistanceInformation = 0x79,
+    SystemAcpiAuditInformation = 0x7a,
+    SystemBasicPerformanceInformation = 0x7b,
+    SystemQueryPerformanceCounterInformation = 0x7c,
+    SystemSessionBigPoolInformation = 0x7d,
+    SystemBootGraphicsInformation = 0x7e,
+    SystemScrubPhysicalMemoryInformation = 0x7f,
+    SystemBadPageInformation = 0x80,
+    SystemProcessorProfileControlArea = 0x81,
+    SystemCombinePhysicalMemoryInformation = 0x82,
+    SystemEntropyInterruptTimingInformation = 0x83,
+    SystemConsoleInformation = 0x84,
+    SystemPlatformBinaryInformation = 0x85,
+    SystemThrottleNotificationInformation = 0x86,
+    SystemHypervisorProcessorCountInformation = 0x87,
+    SystemDeviceDataInformation = 0x88,
+    SystemDeviceDataEnumerationInformation = 0x89,
+    SystemMemoryTopologyInformation = 0x8a,
+    SystemMemoryChannelInformation = 0x8b,
+    SystemBootLogoInformation = 0x8c,
+    SystemProcessorPerformanceInformationEx = 0x8d,
+    SystemSpare0 = 0x8e,
+    SystemSecureBootPolicyInformation = 0x8f,
+    SystemPageFileInformationEx = 0x90,
+    SystemSecureBootInformation = 0x91,
+    SystemEntropyInterruptTimingRawInformation = 0x92,
+    SystemPortableWorkspaceEfiLauncherInformation = 0x93,
+    SystemFullProcessInformation = 0x94,
+    SystemKernelDebuggerInformationEx = 0x95,
+    SystemBootMetadataInformation = 0x96,
+    SystemSoftRebootInformation = 0x97,
+    SystemElamCertificateInformation = 0x98,
+    SystemOfflineDumpConfigInformation = 0x99,
+    SystemProcessorFeaturesInformation = 0x9a,
+    SystemRegistryReconciliationInformation = 0x9b,
+    SystemSupportedProcessArchitectures = 0xb5,
+} SYSTEM_INFORMATION_CLASS;
+
+DYNDATA DynamicData;
+
+NTSTATUS KernelStart(PVOID pThisModule) {
+
+    NTSTATUS Status = STATUS_UNSUCCESSFUL;
+    auto _pThisModule = (PKLDR_DATA_TABLE_ENTRY)pThisModule;
+
+    LPBYTE NtOpenFile = (LPBYTE)GetKernelExportAddr(L"NtOpenFile");
+
+    if (NtOpenFile != NULL) {
+
+        ULONG Size = NULL;
+
+        Status = ZwQuerySystemInformation(SystemModuleInformation, NULL, Size, &Size);
+       
+        if (!NT_SUCCESS(Status) && Size != NULL) {
+
+            PSYSTEM_MODULE_INFORMATION pMods = (PSYSTEM_MODULE_INFORMATION)(RtlAllocateMemory(Size));
+
+            if (pMods != NULL) {
+
+                Status = ZwQuerySystemInformation(SystemModuleInformation, pMods, Size, &Size);
+                if (!NT_SUCCESS(Status)) {
+                    RtlFreeMemoryEx(pMods);
+                    return Status;
+                }
+                LogInfo("ZwQuerySystemInformation2 Success");
+                // return Status;
+
+                PSYSTEM_MODULE_INFORMATION_ENTRY pMod = pMods->Modules;
+
+                for (ULONG Index = NULL; Index < pMods->NumberOfModules; Index++) {
+                    if (NtOpenFile >= pMod[Index].ImageBase && NtOpenFile < (LPBYTE)(pMod[Index].ImageBase + pMod[Index].ImageSize)) {
+                        for (PLIST_ENTRY pListEntry = _pThisModule->InLoadOrderLinks.Flink; pListEntry != &_pThisModule->InLoadOrderLinks; pListEntry = pListEntry->Flink) {
+
+                            PKLDR_DATA_TABLE_ENTRY pEntry = CONTAINING_RECORD(pListEntry, KLDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
+
+                            if (pMod[Index].ImageBase == pEntry->DllBase && (LPBYTE)pListEntry->Blink >= pEntry->DllBase && (LPBYTE)pListEntry->Blink < (LPBYTE)pEntry->DllBase + pEntry->SizeOfImage) {
+
+                                //DynamicData->KernelBase = (PVOID)(pMod[Index].ImageBase);
+
+                                // DynamicData->ModuleList = (PVOID)(pListEntry->Blink);
+                                LogInfo("KernelBase Find Success");
+                                break;
+                            }
+                        }
+                    }
+                    
+                }
+
+                RtlFreeMemoryEx(pMods);
+            }
+        }
+    }
+
+    return Status;
+}
+

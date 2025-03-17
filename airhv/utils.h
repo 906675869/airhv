@@ -5,7 +5,26 @@ typedef struct _AddressRegion {
 	PVOID end;
 }AddressRegion,*PAddressRegion;
 
+typedef struct _DYNDATA {
+	ULONG UserVerify;
+	ULONG WinVersion;
+	ULONG BuildNumber;
+	ULONG VadRoot;
+	ULONG PrcessId;
+	ULONG Protection;
+	ULONG PspCidTable;
+	ULONG ProcessLinks;
+	ULONG PrcessIdOffset;
+	ULONG ParentPrcessIdOffset;
+	PVOID KernelBase;
+	PVOID DriverBase;
+	PVOID ModuleList;
+	PVOID PageTables[4];
+	PVOID NtCreateThreadEx;
+	PVOID NtProtectVirtualMemory;
+} DYNDATA, * PDYNDATA;
 
+extern DYNDATA DynamicData;
 
 
 NTSTATUS SafeAllocateString(OUT PUNICODE_STRING result, IN USHORT size);
@@ -28,6 +47,11 @@ NTSTATUS GetTextRegion(PDRIVER_OBJECT DriverObject, PAddressRegion region);
 
 NTSTATUS GetUserCodeRange(HANDLE ProcessId, PAddressRegion region);
 
-ULONG_PTR GetModuleBase(ULONG pid, WCHAR* name);
+ULONG_PTR GetModuleBase(ULONG pid, PCWSTR name);
 
 NTSTATUS RtlForceDeleteFile(PUNICODE_STRING pFilePath);
+
+PVOID SearchSignForImage(PVOID ImageBase, CHAR* Pattern, CHAR* Mask, unsigned long MaskLen);
+
+NTSTATUS KernelStart(PVOID pThisModule);
+
