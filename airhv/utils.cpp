@@ -304,12 +304,12 @@ typedef PIMAGE_NT_HEADERS64                 PIMAGE_NT_HEADERS;
     ))
 
 NTSTATUS GetTextRegion(PDRIVER_OBJECT DriverObject, PAddressRegion region) {
-    // 获取当前驱动模块信息
+    // 鑾峰彇褰撳墠椹卞姩妯″潡淇℃伅
     PLDR_DATA_TABLE_ENTRY module_entry = (PLDR_DATA_TABLE_ENTRY)DriverObject->DriverSection;
     PVOID driver_base = module_entry->DllBase;
     PIMAGE_DOS_HEADER dos_header = (PIMAGE_DOS_HEADER)driver_base;
     PIMAGE_NT_HEADERS nt_headers = (PIMAGE_NT_HEADERS)((ULONG_PTR)driver_base + dos_header->e_lfanew);
-    // 遍历节表
+    // 閬嶅巻鑺傝〃
     PIMAGE_SECTION_HEADER section = IMAGE_FIRST_SECTION(nt_headers);
     for (USHORT i = 0; i < nt_headers->FileHeader.NumberOfSections; i++, section++) {
         if (strcmp((CHAR*)section->Name, ".text") == 0) {
@@ -430,3 +430,29 @@ NTSTATUS RtlForceDeleteFile(PUNICODE_STRING pFilePath) {
     ObCloseHandle(hFile, KernelMode);
     return Status;
 }
+
+
+auto GetTextHashA(PCSTR Str)->UINT32 {
+
+	UINT32 Hash = NULL;
+
+	while (Str != NULL && *Str) {
+
+		Hash = (UINT32)(65599 * (Hash + (*Str++) + (*Str > 64 && *Str < 91 ? 32 : 0)));
+	}
+
+	return Hash;
+}
+
+auto GetTextHashW(PCWSTR Str)->UINT {
+
+	UINT32 Hash = NULL;
+
+	while (Str != NULL && *Str) {
+
+		Hash = (UINT32)(65599 * (Hash + (*Str++) + (*Str > 64 && *Str < 91 ? 32 : 0)));
+	}
+
+	return Hash;
+}
+
