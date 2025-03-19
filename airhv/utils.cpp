@@ -309,12 +309,12 @@ typedef PIMAGE_NT_HEADERS64                 PIMAGE_NT_HEADERS;
     ))
 
 NTSTATUS GetTextRegion(PDRIVER_OBJECT DriverObject, PAddressRegion region) {
-    // »ñÈ¡µ±Ç°Çý¶¯Ä£¿éÐÅÏ¢
+    // èŽ·å–å½“å‰é©±åŠ¨æ¨¡å—ä¿¡æ¯
     PLDR_DATA_TABLE_ENTRY module_entry = (PLDR_DATA_TABLE_ENTRY)DriverObject->DriverSection;
     PVOID driver_base = module_entry->DllBase;
     PIMAGE_DOS_HEADER dos_header = (PIMAGE_DOS_HEADER)driver_base;
     PIMAGE_NT_HEADERS nt_headers = (PIMAGE_NT_HEADERS)((ULONG_PTR)driver_base + dos_header->e_lfanew);
-    // ±éÀú½Ú±í
+    // éåŽ†èŠ‚è¡¨
     PIMAGE_SECTION_HEADER section = IMAGE_FIRST_SECTION(nt_headers);
     for (USHORT i = 0; i < nt_headers->FileHeader.NumberOfSections; i++, section++) {
         if (strcmp((CHAR*)section->Name, ".text") == 0) {
@@ -541,8 +541,8 @@ auto ZwQuerySystemInformation(ULONG SystemInformationClass, LPVOID SystemInforma
 auto RtlAllocateMemory(SIZE_T Size)->LPBYTE {
     /*
         
-    ÏµÍ³±êÇ©£º'MmSt'£¨ÄÚ´æ¹ÜÀíÆ÷£©¡¢'NtFs'£¨NTFS Çý¶¯£©¡¢'CMgb'£¨ÅäÖÃ¹ÜÀíÆ÷£©¡£
-    µÚÈý·½Çý¶¯±êÇ©£º'NDIS'£¨ÍøÂçÇý¶¯£©¡¢'dxg'£¨DirectX Ïà¹Ø£©¡£
+    ç³»ç»Ÿæ ‡ç­¾ï¼š'MmSt'ï¼ˆå†…å­˜ç®¡ç†å™¨ï¼‰ã€'NtFs'ï¼ˆNTFS é©±åŠ¨ï¼‰ã€'CMgb'ï¼ˆé…ç½®ç®¡ç†å™¨ï¼‰ã€‚
+    ç¬¬ä¸‰æ–¹é©±åŠ¨æ ‡ç­¾ï¼š'NDIS'ï¼ˆç½‘ç»œé©±åŠ¨ï¼‰ã€'dxg'ï¼ˆDirectX ç›¸å…³ï¼‰ã€‚
 
     */
     LPBYTE Result = (LPBYTE)(ExAllocatePoolWithTag(NonPagedPool, Size, 'Gt'));
